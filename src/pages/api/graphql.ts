@@ -23,9 +23,6 @@ const connection = await MongoClient.connect(process.env.MONGO_URL!);
 const mongoRepo = new MongoRepository(connection.db("ragnanalytics"));
 Container.set(MongoRepository, mongoRepo);
 
-// Services
-Container.set(ItemService, new ItemService(mongoRepo, payonPC, ragnApi));
-
 const schema = await buildSchema({
   // Array of resolvers
   resolvers: [ItemMutationResolver, ItemQueryResolver],

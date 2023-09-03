@@ -8,24 +8,26 @@ import {
   Resolver,
 } from "type-graphql";
 import { ItemService } from "../services/itemService";
-import { Inject } from "typedi";
+import { Inject, Service } from "typedi";
 
 @Resolver()
+@Service()
 export class ItemQueryResolver {
-  constructor(
-    @Inject()
-    private itemService: ItemService
-  ) {}
+  @Inject() private itemService!: ItemService;
 
   @Query((returns) => Boolean)
   async items() {
     //
   }
 
+  /* tests */
+
   @Query((returns) => Boolean)
-  test() {
-    this.itemService.test();
-    console.log(`test passed! resolver`);
+  async getOneItemFromPayon(@Arg("itemId") itemId: string) {
+    const result = await this.itemService.getOneItemFromPayon(itemId);
+
+    console.log(result);
+
     return true;
   }
 }

@@ -71,8 +71,4 @@ export class MongoRepository {
   private getPayonCollection() {
     return this.database.collection<MongoData>(COLLECTION_NAME);
   }
-
-  test() {
-    console.log(`test passed! repo`);
-  }
 }

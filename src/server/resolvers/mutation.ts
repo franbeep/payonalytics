@@ -8,11 +8,13 @@ import {
   Resolver,
 } from "type-graphql";
 import { ItemService } from "../services/itemService";
+import { Inject, Service } from "typedi";
 
 // TODO: need item class here
 @Resolver()
+@Service()
 export class ItemMutationResolver {
-  constructor(private itemService: ItemService) {}
+  @Inject() private itemService!: ItemService;
 
   @Mutation((returns) => Boolean)
   async refreshHistory() {
