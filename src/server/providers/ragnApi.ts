@@ -1,9 +1,24 @@
 // https://ragnapi.com/
 
-const END_POINT = 'https://ragnapi.com/api/v1/old-times';
+import axios from "axios";
 
-// /monsters
-const getMonsterInfo = async () => {};
+export class RagnApi {
+  async getMonsterInfo(monsterId: string) {
+    const { data } = await axios.get(
+      new URL(`/monsters/${monsterId}`, process.env.RAGNAPI_ENDPOINT!).href
+    );
 
-// /items
-const getItemInfo = async () => {};
+    if (!data) throw Error("getMonsterInfo failed");
+
+    return data;
+  }
+  async getItemInfo(itemId: string) {
+    const { data } = await axios.get(
+      new URL(`/items/${itemId}`, process.env.RAGNAPI_ENDPOINT!).href
+    );
+
+    if (!data) throw Error("getItemInfo failed");
+
+    return data;
+  }
+}

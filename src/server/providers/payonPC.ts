@@ -4,8 +4,6 @@ import axios from "axios";
 
 import { buildParams } from "@/server/utils";
 
-const END_POINT = "https://tools.payonstories.com/api/pc";
-
 type GetItemInfoResponse = {
   isList: boolean;
   items: Array<{
@@ -16,29 +14,12 @@ type GetItemInfoResponse = {
     slots: number;
   }>;
 };
-export const getItemInfo = async ({
-  id,
-  name,
-}: {
-  id?: string;
-  name?: string;
-}) => {
-  if (!id && !name)
-    throw Error("Invalid request: Either ID or Name must be defined");
-
-  return axios.get<GetItemInfoResponse>(
-    `${END_POINT}/item${buildParams({
-      ...(id ? { id } : {}),
-      ...(name ? { name } : {}),
-    })}`
-  );
-};
 
 type AvgItem = Array<{
   x: string; // date
   y: number;
 }>;
-type HistoryItem = Array<{
+export type HistoryItem = Array<{
   x: string; // date
   y: Array<number>;
   filter: Array<{
@@ -57,8 +38,23 @@ type getItemHistoryResponse = {
   sellHistory: HistoryItem;
   lastUpdated: number; // number date
 };
-export const getItemHistory = async (id: string) => {
-  return axios.get<getItemHistoryResponse>(
-    `${END_POINT}/history${buildParams({ id })}`
-  );
-};
+
+export class PayonPC {
+  getItemInfo({ id, name }: { id?: string; name?: string }) {
+    if (!id && !name)
+      throw Error("Invalid request: Either ID or Name must be defined");
+
+    return axios.get<GetItemInfoResponse>(
+      `${process.env.PAYON_STORIES_ENDPOINT}/item${buildParams({
+        ...(id ? { id } : {}),
+        ...(name ? { name } : {}),
+      })}`
+    );
+  }
+
+  getItemHistory(id: string) {
+    return axios.get<getItemHistoryResponse>(
+      `${process.env.PAYON_STORIES_ENDPOINT}/history${buildParams({ id })}`
+    );
+  }
+}
