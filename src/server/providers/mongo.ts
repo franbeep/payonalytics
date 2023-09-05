@@ -90,7 +90,7 @@ export class MongoRepository {
     const collection = this.getListItemIdsCollection();
     const [first] = await collection
       .find({})
-      .sort({ _id: 1 })
+      .sort({ _id: -1 })
       .limit(1)
       .toArray();
 

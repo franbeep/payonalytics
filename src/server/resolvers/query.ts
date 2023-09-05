@@ -11,7 +11,7 @@ import { ItemService } from "../services/itemService";
 import { Inject, Service } from "typedi";
 import { Item } from "./inputs";
 
-@Resolver()
+@Resolver(Item)
 @Service()
 export class ItemQueryResolver {
   @Inject() private itemService!: ItemService;
@@ -20,15 +20,4 @@ export class ItemQueryResolver {
   async items() {
     return await this.itemService.getItems();
   }
-
-  /* tests */
-
-  // @Query((returns) => Boolean)
-  // async getOneItemFromPayon(@Arg("itemId") itemId: string) {
-  //   const result = await this.itemService.getOneItemFromPayon(itemId);
-
-  //   console.log(result);
-
-  //   return true;
-  // }
 }
