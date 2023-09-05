@@ -22,4 +22,11 @@ export class ItemMutationResolver {
 
     return true;
   }
+
+  @Mutation((returns) => Boolean)
+  async refreshListOfItems() {
+    await this.itemService.refreshListOfItems();
+
+    return true;
+  }
 }

@@ -32,10 +32,10 @@ export type HistoryItems = Array<{
 }>;
 type getItemHistoryResponse = {
   error: string;
-  vendAvg: AvgItems;
-  vendHistory: HistoryItems;
-  sellAvg: AvgItems;
-  sellHistory: HistoryItems;
+  vendAvg?: AvgItems;
+  vendHistory?: HistoryItems;
+  sellAvg?: AvgItems;
+  sellHistory?: HistoryItems;
   lastUpdated: number; // number date
 };
 
@@ -56,13 +56,20 @@ export class PayonPC {
     return data;
   }
 
-  async getItemHistory(id: string) {
-    const { data } = await axios.get<getItemHistoryResponse>(
-      `${process.env.PAYON_STORIES_ENDPOINT}/history${buildParams({ id })}`
-    );
+  async getItemHistory(id: string): Promise<getItemHistoryResponse> {
+    try {
+      const { data } = await axios.get<getItemHistoryResponse>(
+        `${process.env.PAYON_STORIES_ENDPOINT}/history${buildParams({ id })}`
+      );
 
-    if (!data) throw Error("getItemHistory failed");
-
-    return data;
+      return data;
+    } catch (error) {
+      // id doesn´t not exist
+      // TODO
+      return {
+        error: "request failed",
+        lastUpdated: 0,
+      };
+    }
   }
 }

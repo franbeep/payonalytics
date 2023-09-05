@@ -1,32 +1,49 @@
-import type { Db as Database, Filter } from "mongodb";
+import type { Db as Database, Filter, IntegerType } from "mongodb";
 import { HistoryItems } from "./payonPC";
 
-const COLLECTION_NAME = "payonstories";
-export type MongoData = {
+const PAYON_STORIES_COLLECTION_NAME = "payonstories";
+const LIST_OF_ITEM_IDS_COLLECTION_NAME = "listofitemids";
+export type PayonMongoData = {
   itemId: string;
   modifiedAt: Date;
-  data: HistoryItems;
+  vendHist: HistoryItems;
+  sellHist: HistoryItems;
+};
+export type ItemListMongoData = {
+  createdAt: Date;
+  itemIds: Array<number>;
 };
 
 export class MongoRepository {
   constructor(private database: Database) {}
 
-  async saveRawItem(itemId: string, item: HistoryItems, modifiedAt: Date) {
+  /* payon stories methods */
+
+  async saveRawItem(
+    itemId: string,
+    data: { vendHist: HistoryItems; sellHist: HistoryItems },
+    modifiedAt: Date
+  ) {
     const collection = this.getPayonCollection();
     await collection.insertOne({
       itemId,
       modifiedAt,
-      data: item,
+      ...data,
     });
   }
 
-  async saveRawItems(items: Array<{ id: string; data: HistoryItems }>) {
+  async saveRawItems(
+    items: Array<{
+      id: string;
+      data: { vendHist: HistoryItems; sellHist: HistoryItems };
+    }>
+  ) {
     const collection = this.getPayonCollection();
     await collection.insertMany(
       items.map((item) => ({
         itemId: item.id,
         modifiedAt: new Date(),
-        data: item.data,
+        ...item.data,
       }))
     );
   }
@@ -43,7 +60,7 @@ export class MongoRepository {
     const result = await collection
       .aggregate<{
         _id: string;
-        first: MongoData;
+        first: PayonMongoData;
       }>([
         {
           $sort: {
@@ -52,9 +69,8 @@ export class MongoRepository {
         },
         {
           $group: {
-            _id: "modifiedAt",
-            // items: { $push: "$$ROOT" },
-            first: { $first: "$modifiedAt" },
+            _id: "$itemId",
+            first: { $first: "$$ROOT" },
           },
         },
       ])
@@ -63,12 +79,48 @@ export class MongoRepository {
     return result.map((item) => item.first);
   }
 
-  async deleteRawItems(filter: Filter<MongoData>) {
+  async deleteRawItems(filter: Filter<PayonMongoData>) {
     const collection = this.getPayonCollection();
     await collection.deleteMany(filter);
   }
 
+  /* list of item ids methods */
+
+  async getListOfItems() {
+    const collection = this.getListItemIdsCollection();
+    const [first] = await collection
+      .find({})
+      .sort({ _id: 1 })
+      .limit(1)
+      .toArray();
+
+    return first;
+  }
+
+  async insertListOfItems(itemIds: number[]) {
+    const collection = this.getListItemIdsCollection();
+    await collection.insertOne({
+      createdAt: new Date(),
+      itemIds,
+    });
+  }
+
+  async deleteListOfItems(filter: Filter<ItemListMongoData>) {
+    const collection = this.getListItemIdsCollection();
+    await collection.deleteMany(filter);
+  }
+
+  /* collection methods */
+
   private getPayonCollection() {
-    return this.database.collection<MongoData>(COLLECTION_NAME);
+    return this.database.collection<PayonMongoData>(
+      PAYON_STORIES_COLLECTION_NAME
+    );
+  }
+
+  private getListItemIdsCollection() {
+    return this.database.collection<ItemListMongoData>(
+      LIST_OF_ITEM_IDS_COLLECTION_NAME
+    );
   }
 }
