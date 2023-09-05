@@ -22,5 +22,6 @@
   "tailwindCSS.includeLanguages": {
     "typescript": "javascript",
     "typescriptreact": "javascript"
-  }
+  },
+  "javascript.preferences.quoteStyle": "single"
 }
