@@ -85,6 +85,8 @@ export class ItemService {
   async getItems() {
     const rawItems = await this.mongoRepository.getAllRawItems();
 
+    console.log('rawItems.length', rawItems.length);
+
     return rawItems.map(this.toDTO);
   }
 
