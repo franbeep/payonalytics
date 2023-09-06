@@ -6,7 +6,6 @@ const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
 export type PayonMongoData = {
   itemId: string;
   itemName: string;
-  iconURL: string;
   modifiedAt: Date;
   rawData: {
     vendHist: HistoryItems;
@@ -35,9 +34,15 @@ export class MongoRepository {
 
   async getRawItemByItemId(itemId: string) {
     const collection = this.getPayonCollection();
-    return await collection.findOne({
-      itemId,
-    });
+    const [first] = await collection
+      .find({
+        itemId,
+      })
+      .sort({ _id: -1 })
+      .limit(1)
+      .toArray();
+
+    return first;
   }
 
   async getAllRawItems() {
@@ -46,19 +51,24 @@ export class MongoRepository {
       .aggregate<{
         _id: string;
         first: PayonMongoData;
-      }>([
-        {
-          $sort: {
-            modifiedAt: -1,
+      }>(
+        [
+          {
+            $sort: {
+              _id: -1,
+            },
           },
-        },
-        {
-          $group: {
-            _id: '$itemId',
-            first: { $first: '$$ROOT' },
+          {
+            $group: {
+              _id: '$itemId',
+              first: { $first: '$$ROOT' },
+            },
           },
+        ],
+        {
+          allowDiskUse: true,
         },
-      ])
+      )
       .toArray();
 
     return result.map(item => item.first);

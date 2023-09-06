@@ -158,6 +158,7 @@ export default function Page() {
                 ))}
               </thead>
               <tbody>
+                {/* https://db.irowiki.org/image/item/1069.png */}
                 {testRow}
                 {testRow}
                 {testRow}

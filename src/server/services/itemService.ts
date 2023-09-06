@@ -1,6 +1,11 @@
-import { MongoRepository, PayonPC, RagnApi } from '../providers';
+import {
+  MongoRepository,
+  PayonMongoData,
+  PayonPC,
+  RagnApi,
+} from '../providers';
 import { subDays } from 'date-fns';
-import { coveredItemIds } from '@/server/constants';
+import { coveredItemIds, itemNames } from '@/server/constants';
 import { sleep, rebuildName } from '@/server/utils';
 import { Inject, Service } from 'typedi';
 import { Item } from '../resolvers/inputs';
@@ -43,24 +48,20 @@ export class ItemService {
 
     let count = 1;
     const listOfItemIds = [];
-    for (const _itemId of itemIds) {
-      const itemId = String(_itemId);
+    for (const itemIdNumber of itemIds) {
+      const itemId = String(itemIdNumber);
 
       console.log(`[refreshHistory] ${itemId} [${count++}/${itemIds.length}]`);
 
       // get item history
       const item = await this.payonPC.getItemHistory(itemId);
 
-      // get item name and icon
-      const itemInfo = await this.ragnApi.getItemInfo(itemId);
-
       if (item.vendHistory?.length || item.sellHistory?.length) {
         // ...and save if it has history
         listOfItemIds.push(itemId);
         await this.mongoRepository.saveRawItem({
           itemId: String(itemId),
-          itemName: rebuildName(itemInfo.name),
-          iconURL: itemInfo.img,
+          itemName: itemNames[itemIdNumber as keyof typeof itemNames],
           modifiedAt: currentDate,
           rawData: {
             vendHist: item.vendHistory || [],
@@ -86,31 +87,32 @@ export class ItemService {
   async getItems() {
     const rawItems = await this.mongoRepository.getAllRawItems();
 
-    return rawItems.map(item => {
-      const { itemId, iconURL, itemName, modifiedAt, rawData } = item;
-
-      return {
-        id: itemId,
-        name: itemName,
-        iconURL,
-        modifiedAt,
-        rawData: {
-          iconURL,
-          itemName,
-          modifiedAt,
-          ...rawData,
-        },
-      } satisfies Item;
-    });
+    return rawItems.map(this.toDTO);
   }
 
-  async getFullItem() {
-    // TODO
+  async getFullItem(itemId: string) {
+    const result = (await this.mongoRepository.getRawItemByItemId(itemId))!;
+
+    return this.toDTO(result);
   }
 
   async getOneItemFromPayon(itemId: string) {
     const item = await this.payonPC.getItemHistory(String(itemId));
 
     return item;
+  }
+
+  private toDTO(rawItem: PayonMongoData) {
+    const { itemId: id, itemName: name, rawData, ...rest } = rawItem;
+
+    return {
+      ...rest,
+      id,
+      name,
+      rawData: {
+        ...rawItem,
+        ...rawData,
+      },
+    } satisfies Omit<Item, 'iconURL'>;
   }
 }

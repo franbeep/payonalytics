@@ -494,6 +494,13 @@
     "@types/qs" "*"
     "@types/serve-static" "*"
 
+"@types/graphql-fields@^1.3.5":
+  version "1.3.5"
+  resolved "https://registry.yarnpkg.com/@types/graphql-fields/-/graphql-fields-1.3.5.tgz#e1c78bb200a3d20d5a5a4ed4c34d3a09e8b696b6"
+  integrity sha512-F6Nkra4p4MeBRFhg4zfkrnl/2gL4HZdt5lkFgLKZaA+3U/5+eA1dMqSHuSHX7aFUbCFE48ch8qCBXB/udcRhMg==
+  dependencies:
+    graphql "*"
+
 "@types/http-errors@*":
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/@types/http-errors/-/http-errors-2.0.1.tgz#20172f9578b225f6c7da63446f56d4ce108d5a65"
@@ -1891,7 +1898,7 @@ graphql-tag@^2.12.6:
   dependencies:
     tslib "^2.1.0"
 
-graphql@^16.8.0:
+graphql@*, graphql@^16.8.0:
   version "16.8.0"
   resolved "https://registry.yarnpkg.com/graphql/-/graphql-16.8.0.tgz#374478b7f27b2dc6153c8f42c1b80157f79d79d4"
   integrity sha512-0oKGaR+y3qcS5mCu1vb7KG+a89vjn06C7Ihq/dDl3jA+A8B3TKomvi3CiEcVLJQGalbu8F52LxkOym7U5sSfbg==

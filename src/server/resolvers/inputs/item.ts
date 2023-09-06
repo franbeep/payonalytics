@@ -1,5 +1,7 @@
 import { Field, ID, ObjectType } from 'type-graphql';
 
+export type FixDecorator<T> = T;
+
 @ObjectType()
 export class Item {
   @Field(type => ID)
@@ -9,13 +11,19 @@ export class Item {
   name!: string;
 
   @Field()
-  iconURL!: string;
-
-  @Field()
   modifiedAt!: Date;
 
+  @Field(() => RawMongoData)
+  rawData!: FixDecorator<RawMongoData>;
+
   @Field()
-  rawData!: RawMongoData;
+  iconURL!: string;
+}
+
+@ObjectType()
+export class Sevira {
+  @Field()
+  id!: string;
 }
 
 @ObjectType()
@@ -24,16 +32,13 @@ export class RawMongoData {
   itemName!: string;
 
   @Field()
-  iconURL!: string;
-
-  @Field()
   modifiedAt!: Date;
 
-  @Field()
-  vendHist!: HistoryItemsObjectType[];
+  @Field(type => [HistoryItemsObjectType])
+  vendHist!: FixDecorator<HistoryItemsObjectType>[];
 
-  @Field()
-  sellHist!: HistoryItemsObjectType[];
+  @Field(type => [HistoryItemsObjectType])
+  sellHist!: FixDecorator<HistoryItemsObjectType>[];
 }
 
 @ObjectType()
@@ -41,10 +46,10 @@ export class HistoryItemsObjectType {
   @Field()
   x!: string;
 
-  @Field()
-  y!: Array<number>;
+  @Field(type => [Number])
+  y!: number[];
 
-  @Field()
+  @Field(type => [FilterItemObjectType])
   filter!: FilterItemObjectType[];
 }
 

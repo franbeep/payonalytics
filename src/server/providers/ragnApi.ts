@@ -1,17 +1,15 @@
-// https://ragnapi.com/
-
 import axios from 'axios';
 
 type ItemInfo = {
-  id: string;
-  name: string;
-  img: string;
+  id?: string;
+  name?: string;
+  img?: string;
 };
 
 export class RagnApi {
   async getMonsterInfo(monsterId: string) {
     const { data } = await axios.get(
-      new URL(`/monsters/${monsterId}`, process.env.RAGNAPI_ENDPOINT!).href,
+      `${process.env.RAGNAPI_ENDPOINT!}/monsters/${monsterId}`,
     );
 
     if (!data) throw Error('getMonsterInfo failed');
@@ -21,7 +19,7 @@ export class RagnApi {
   async getItemInfo(itemId: string) {
     try {
       const { data } = await axios.get<ItemInfo>(
-        new URL(`/items/${itemId}`, process.env.RAGNAPI_ENDPOINT!).href,
+        `${process.env.RAGNAPI_ENDPOINT!}/items/${itemId}`,
       );
 
       return data;
