@@ -47,7 +47,6 @@ export class ItemService {
     const currentDate = new Date();
 
     let count = 1;
-    const listOfItemIds = [];
     for (const itemIdNumber of itemIds) {
       const itemId = String(itemIdNumber);
 
@@ -58,7 +57,6 @@ export class ItemService {
 
       if (item.vendHistory?.length || item.sellHistory?.length) {
         // ...and save if it has history
-        listOfItemIds.push(itemId);
         await this.mongoRepository.saveRawItem({
           itemId: String(itemId),
           itemName: itemNames[itemIdNumber as keyof typeof itemNames],
