@@ -1,9 +1,9 @@
-import { MongoRepository, PayonPC, RagnApi } from "../providers";
-import { subDays } from "date-fns";
-import { coveredItemIds } from "@/server/constants";
-import sleep from "../utils/sleep";
-import { Inject, Service } from "typedi";
-import { Item } from "../resolvers/inputs";
+import { MongoRepository, PayonPC, RagnApi } from '../providers';
+import { subDays } from 'date-fns';
+import { coveredItemIds } from '@/server/constants';
+import { sleep, rebuildName } from '@/server/utils';
+import { Inject, Service } from 'typedi';
+import { Item } from '../resolvers/inputs';
 
 const TIMEOUT = 300;
 
@@ -17,7 +17,7 @@ export class ItemService {
     private payonPC: PayonPC,
 
     @Inject()
-    ragnApi: RagnApi
+    private ragnApi: RagnApi,
   ) {}
 
   async refreshHistory(fullRefresh = false) {
@@ -43,24 +43,30 @@ export class ItemService {
 
     let count = 1;
     const listOfItemIds = [];
-    for (const itemId of itemIds) {
+    for (const _itemId of itemIds) {
+      const itemId = String(_itemId);
+
       console.log(`[refreshHistory] ${itemId} [${count++}/${itemIds.length}]`);
 
-      const item = await this.payonPC.getItemHistory(String(itemId));
+      // get item history
+      const item = await this.payonPC.getItemHistory(itemId);
 
-      // TODO: add item title, description, etc. from ragnApi
+      // get item name and icon
+      const itemInfo = await this.ragnApi.getItemInfo(itemId);
 
       if (item.vendHistory?.length || item.sellHistory?.length) {
         // ...and save if it has history
         listOfItemIds.push(itemId);
-        await this.mongoRepository.saveRawItem(
-          String(itemId),
-          {
+        await this.mongoRepository.saveRawItem({
+          itemId: String(itemId),
+          itemName: rebuildName(itemInfo.name),
+          iconURL: itemInfo.img,
+          modifiedAt: currentDate,
+          rawData: {
             vendHist: item.vendHistory || [],
             sellHist: item.sellHistory || [],
           },
-          currentDate
-        );
+        });
       }
 
       await sleep(TIMEOUT);
@@ -80,16 +86,22 @@ export class ItemService {
   async getItems() {
     const rawItems = await this.mongoRepository.getAllRawItems();
 
-    return rawItems.map(
-      (item) =>
-        ({
-          id: item.itemId,
-          title: "no name",
-          description: "no desc",
-          shouldIByIt: false,
-          modifiedAt: item.modifiedAt,
-        } satisfies Item)
-    );
+    return rawItems.map(item => {
+      const { itemId, iconURL, itemName, modifiedAt, rawData } = item;
+
+      return {
+        id: itemId,
+        name: itemName,
+        iconURL,
+        modifiedAt,
+        rawData: {
+          iconURL,
+          itemName,
+          modifiedAt,
+          ...rawData,
+        },
+      } satisfies Item;
+    });
   }
 
   async getFullItem() {

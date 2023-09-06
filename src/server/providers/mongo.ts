@@ -1,13 +1,17 @@
-import type { Db as Database, Filter, IntegerType } from "mongodb";
-import { HistoryItems } from "./payonPC";
+import type { Db as Database, Filter, IntegerType } from 'mongodb';
+import { HistoryItems } from './payonPC';
 
-const PAYON_STORIES_COLLECTION_NAME = "payonstories";
-const LIST_OF_ITEM_IDS_COLLECTION_NAME = "listofitemids";
+const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
+const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
 export type PayonMongoData = {
   itemId: string;
+  itemName: string;
+  iconURL: string;
   modifiedAt: Date;
-  vendHist: HistoryItems;
-  sellHist: HistoryItems;
+  rawData: {
+    vendHist: HistoryItems;
+    sellHist: HistoryItems;
+  };
 };
 export type ItemListMongoData = {
   createdAt: Date;
@@ -19,33 +23,14 @@ export class MongoRepository {
 
   /* payon stories methods */
 
-  async saveRawItem(
-    itemId: string,
-    data: { vendHist: HistoryItems; sellHist: HistoryItems },
-    modifiedAt: Date
-  ) {
+  async saveRawItem(data: PayonMongoData) {
     const collection = this.getPayonCollection();
-    await collection.insertOne({
-      itemId,
-      modifiedAt,
-      ...data,
-    });
+    await collection.insertOne(data);
   }
 
-  async saveRawItems(
-    items: Array<{
-      id: string;
-      data: { vendHist: HistoryItems; sellHist: HistoryItems };
-    }>
-  ) {
+  async saveRawItems(items: Array<PayonMongoData>) {
     const collection = this.getPayonCollection();
-    await collection.insertMany(
-      items.map((item) => ({
-        itemId: item.id,
-        modifiedAt: new Date(),
-        ...item.data,
-      }))
-    );
+    await collection.insertMany(items);
   }
 
   async getRawItemByItemId(itemId: string) {
@@ -69,14 +54,14 @@ export class MongoRepository {
         },
         {
           $group: {
-            _id: "$itemId",
-            first: { $first: "$$ROOT" },
+            _id: '$itemId',
+            first: { $first: '$$ROOT' },
           },
         },
       ])
       .toArray();
 
-    return result.map((item) => item.first);
+    return result.map(item => item.first);
   }
 
   async deleteRawItems(filter: Filter<PayonMongoData>) {
@@ -114,13 +99,13 @@ export class MongoRepository {
 
   private getPayonCollection() {
     return this.database.collection<PayonMongoData>(
-      PAYON_STORIES_COLLECTION_NAME
+      PAYON_STORIES_COLLECTION_NAME,
     );
   }
 
   private getListItemIdsCollection() {
     return this.database.collection<ItemListMongoData>(
-      LIST_OF_ITEM_IDS_COLLECTION_NAME
+      LIST_OF_ITEM_IDS_COLLECTION_NAME,
     );
   }
 }
