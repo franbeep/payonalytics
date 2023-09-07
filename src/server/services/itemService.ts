@@ -1,4 +1,5 @@
 import {
+  HistoryItems,
   MongoRepository,
   PayonMongoData,
   PayonPC,
@@ -9,6 +10,7 @@ import { coveredItemIds, itemNames } from '@/server/constants';
 import { sleep, rebuildName } from '@/server/utils';
 import { Inject, Service } from 'typedi';
 import { Item } from '../resolvers/inputs';
+import { zip, zipWith } from 'lodash';
 
 const TIMEOUT = 300;
 
@@ -102,17 +104,49 @@ export class ItemService {
     return item;
   }
 
-  private toDTO(rawItem: PayonMongoData) {
-    const { itemId: id, itemName: name, rawData, ...rest } = rawItem;
+  private toDTO({ itemId, itemName, rawData, modifiedAt }: PayonMongoData) {
+    // divide by refinement
+    const histMapFn = <T extends HistoryItems[number]>(hist: T) =>
+      zipWith(
+        Array<string>(hist.y.length).fill(hist.x),
+        hist.y,
+        hist.filter,
+        (a, b, c) => ({
+          date: new Date(a),
+          price: b,
+          itemInfo: c,
+        }),
+      );
+    const sellHistZipped = rawData.sellHist.map(histMapFn).flat();
+    const vendHistZipped = rawData.vendHist.map(histMapFn).flat();
+    const refinementArray = Array(11).map<{
+      refinement: number;
+      sellHist: typeof sellHistZipped;
+      vendHist: typeof vendHistZipped;
+    }>((_, i) => ({
+      refinement: i,
+      sellHist: [],
+      vendHist: [],
+    }));
+    sellHistZipped.forEach(hist => {
+      refinementArray[hist.itemInfo.r].sellHist.push(hist);
+    });
+    vendHistZipped.forEach(hist => {
+      refinementArray[hist.itemInfo.r].vendHist.push(hist);
+    });
+
+    // divide by cards
+
+    // return values
 
     return {
-      ...rest,
-      id,
-      name,
-      rawData: {
-        ...rawItem,
-        ...rawData,
-      },
-    } satisfies Omit<Item, 'iconURL'>;
+      modifiedAt,
+      id: itemId,
+      name: itemName,
+      // rawData: {
+      //   ...rawItem,
+      //   ...rawData,
+      // },
+    } satisfies Pick<Item, 'modifiedAt' | 'id' | 'name'>;
   }
 }

@@ -13,11 +13,51 @@ export class Item {
   @Field()
   modifiedAt!: Date;
 
-  @Field(() => RawMongoData)
-  rawData!: FixDecorator<RawMongoData>;
+  // @Field(() => RawMongoData)
+  // rawData!: FixDecorator<RawMongoData>;
+
+  /* Field Resolvers */
 
   @Field()
   iconURL!: string;
+
+  @Field()
+  refinament!: number;
+
+  @Field()
+  cards!: string;
+
+  @Field(() => ResolversPerDays)
+  last30days!: FixDecorator<ResolversPerDays>;
+
+  @Field(() => ResolversPerDays)
+  last7days!: FixDecorator<ResolversPerDays>;
+
+  // misc
+
+  @Field()
+  mppi!: string;
+}
+
+@ObjectType()
+export class ResolversPerDays {
+  @Field()
+  hps!: string;
+
+  @Field()
+  lps!: string;
+
+  @Field()
+  avgl!: string;
+
+  @Field()
+  avgs!: string;
+
+  @Field()
+  qtys!: string;
+
+  @Field()
+  qtyl!: string;
 }
 
 @ObjectType()
