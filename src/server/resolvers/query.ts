@@ -12,6 +12,9 @@ import {
 import { ItemService } from '../services/itemService';
 import { Inject, Service } from 'typedi';
 import { Item, ResolversPerDays } from './inputs';
+import { max, maxBy, min, minBy } from 'lodash';
+import { subDays, isAfter } from 'date-fns';
+import { itemNames } from '../constants';
 
 @Resolver(Item)
 @Service()
@@ -29,36 +32,66 @@ export class ItemQueryResolver {
   }
 
   @FieldResolver()
-  async refinement(@Root() item: Item) {
-    return '';
-  }
-
-  @FieldResolver()
-  async cards(@Root() item: Item) {
-    return '';
+  async cards(@Root() { cards }: Item) {
+    return cards
+      .split(',')
+      .map(card => itemNames[Number(card) as keyof typeof itemNames])
+      .join(', ');
   }
 
   @FieldResolver(returns => ResolversPerDays)
   async last30days(@Root() item: Item) {
+    const comparableDate = subDays(new Date(), 30);
+    const vendHist = item.vendHist.filter(item =>
+      isAfter(item.date, comparableDate),
+    );
+    const sellHist = item.sellHist.filter(item =>
+      isAfter(item.date, comparableDate),
+    );
+
     return {
-      hps: '',
-      lps: '',
-      avgl: '',
-      avgs: '',
-      qtyl: '',
-      qtys: '',
+      hps: maxBy(sellHist, i => i.price)?.price.toString() || '0',
+      lps: minBy(sellHist, i => i.price)?.price.toString() || '0',
+      avgl: vendHist.length
+        ? Math.round(
+            vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
+          ).toString()
+        : '0',
+      avgs: sellHist.length
+        ? Math.round(
+            sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
+          ).toString()
+        : '0',
+      qtyl: vendHist.length.toString(),
+      qtys: sellHist.length.toString(),
     } satisfies ResolversPerDays;
   }
 
   @FieldResolver(returns => ResolversPerDays)
   async last7days(@Root() item: Item) {
+    const comparableDate = subDays(new Date(), 7);
+    const vendHist = item.vendHist.filter(item =>
+      isAfter(item.date, comparableDate),
+    );
+    const sellHist = item.sellHist.filter(item =>
+      isAfter(item.date, comparableDate),
+    );
+
     return {
-      hps: '',
-      lps: '',
-      avgl: '',
-      avgs: '',
-      qtyl: '',
-      qtys: '',
+      hps: maxBy(sellHist, i => i.price)?.price.toString() || '0',
+      lps: minBy(sellHist, i => i.price)?.price.toString() || '0',
+      avgl: vendHist.length
+        ? Math.round(
+            vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
+          ).toString()
+        : '0',
+      avgs: sellHist.length
+        ? Math.round(
+            sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
+          ).toString()
+        : '0',
+      qtyl: vendHist.length.toString(),
+      qtys: sellHist.length.toString(),
     } satisfies ResolversPerDays;
   }
 
@@ -67,11 +100,9 @@ export class ItemQueryResolver {
     return '';
   }
 
-  @Query(returns => Item)
+  @Query(returns => [Item])
   async item(@Arg('itemId') itemId: string) {
     const item = await this.itemService.getFullItem(itemId);
-
-    console.log(item);
 
     return item;
   }

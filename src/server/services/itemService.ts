@@ -7,10 +7,10 @@ import {
 } from '../providers';
 import { subDays } from 'date-fns';
 import { coveredItemIds, itemNames } from '@/server/constants';
-import { sleep, rebuildName } from '@/server/utils';
+import { sleep, rebuildName, joinCards } from '@/server/utils';
 import { Inject, Service } from 'typedi';
 import { Item } from '../resolvers/inputs';
-import { zip, zipWith } from 'lodash';
+import { omit, zip, zipWith, groupBy, entries, pick } from 'lodash';
 
 const TIMEOUT = 300;
 
@@ -89,7 +89,7 @@ export class ItemService {
 
     console.log('rawItems.length', rawItems.length);
 
-    return rawItems.map(this.toDTO);
+    return rawItems.map(this.toDTO).flat();
   }
 
   async getFullItem(itemId: string) {
@@ -105,48 +105,66 @@ export class ItemService {
   }
 
   private toDTO({ itemId, itemName, rawData, modifiedAt }: PayonMongoData) {
-    // divide by refinement
     const histMapFn = <T extends HistoryItems[number]>(hist: T) =>
       zipWith(
         Array<string>(hist.y.length).fill(hist.x),
         hist.y,
         hist.filter,
-        (a, b, c) => ({
-          date: new Date(a),
-          price: b,
-          itemInfo: c,
-        }),
+        (a, b, _i) => {
+          // some old records doesn't contain refinement info
+          const i = _i || { r: 0 };
+
+          return {
+            date: new Date(a),
+            price: b,
+            refinement: `${i.r}`,
+            cards: joinCards(omit(i, 'r')),
+          };
+        },
       );
+
+    const group = (hist: ReturnType<typeof histMapFn>) =>
+      groupBy(hist, item => `${item.refinement}-${item.cards}`);
+
+    // separate into a better format
+
     const sellHistZipped = rawData.sellHist.map(histMapFn).flat();
     const vendHistZipped = rawData.vendHist.map(histMapFn).flat();
-    const refinementArray = Array(11).map<{
-      refinement: number;
-      sellHist: typeof sellHistZipped;
-      vendHist: typeof vendHistZipped;
-    }>((_, i) => ({
-      refinement: i,
-      sellHist: [],
-      vendHist: [],
-    }));
-    sellHistZipped.forEach(hist => {
-      refinementArray[hist.itemInfo.r].sellHist.push(hist);
-    });
-    vendHistZipped.forEach(hist => {
-      refinementArray[hist.itemInfo.r].vendHist.push(hist);
-    });
 
-    // divide by cards
+    // group by refinement/cards
 
-    // return values
+    const sellHistGroupedByRefCards = group(sellHistZipped);
+    const vendHistGroupedByRefCards = group(vendHistZipped);
 
-    return {
-      modifiedAt,
-      id: itemId,
-      name: itemName,
-      // rawData: {
-      //   ...rawItem,
-      //   ...rawData,
-      // },
-    } satisfies Pick<Item, 'modifiedAt' | 'id' | 'name'>;
+    // flatten & return
+
+    const refinamentCardsSet = new Set<string>();
+    Object.keys(sellHistGroupedByRefCards).forEach(key =>
+      refinamentCardsSet.add(key),
+    );
+    Object.keys(vendHistGroupedByRefCards).forEach(key =>
+      refinamentCardsSet.add(key),
+    );
+
+    const itemsArray = Array.from(refinamentCardsSet).reduce((acc, key) => {
+      const [refinement, cards] = key.split('-');
+
+      const sellHist = sellHistGroupedByRefCards[key] || [];
+      const vendHist = vendHistGroupedByRefCards[key] || [];
+
+      acc[key] = {
+        id: itemId,
+        name: itemName,
+        modifiedAt,
+        refinement,
+        cards,
+        sellHist: sellHist.map(h => pick(h, ['date', 'price'])),
+        vendHist: vendHist.map(h => pick(h, ['date', 'price'])),
+      };
+
+      return acc;
+    }, {} as Record<string, Pick<Item, 'id' | 'name' | 'modifiedAt' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'>>);
+
+    return Object.values(itemsArray);
   }
 }
