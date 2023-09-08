@@ -5,6 +5,7 @@ import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { chunk } from 'lodash';
 
 type ResponseData = {
   items: Array<{
@@ -103,10 +104,10 @@ const columns: Array<{
     title: 'QTYL7',
     tooltip: 'Quantity Listed in 7 days',
   },
-  {
-    title: 'MPPI',
-    tooltip: 'Max Profit Per Item',
-  },
+  // {
+  //   title: 'MPPI',
+  //   tooltip: 'Max Profit Per Item',
+  // },
 ];
 
 const query = gql`
@@ -138,27 +139,162 @@ const query = gql`
   }
 `;
 
+const formatMoney = (str: string) => {
+  if (str === '0') return '-';
+
+  const rev = Array.from(str).reverse();
+
+  return `${chunk(rev, 3)
+    .map(ea => ea.reverse().join(''))
+    .reverse()
+    .join(',')}z`;
+};
+
 export default function Page() {
   const [search, setSearch] = useState<string>();
+  const [refinement, setRefinement] = useState<string>();
+  const [timeFrame, setTimeFrame] = useState<string>();
 
-  const { data, error, loading } = useQuery<ResponseData>(query, {
-    fetchPolicy: 'network-only',
-  });
+  // const { data, error, loading } = useQuery<ResponseData>(query);
 
-  if (error) {
-    console.log(`error`);
-    console.log(error);
-  }
+  const { data, error, loading } = {
+    data: {
+      items: [
+        {
+          cards: '',
+          iconURL: 'https://db.irowiki.org/image/item/5017.png',
+          itemId: '5017',
+          modifiedAt: '2023-09-06T01:51:14.665Z',
+          name: 'Bone Helm',
+          refinement: '0',
+          last7days: {
+            avgl: '586130',
+            avgs: '490000',
+            hps: '490000',
+            lps: '490000',
+            qtyl: '6',
+            qtys: '1',
+          },
+          last30days: {
+            avgl: '735641',
+            avgs: '598333',
+            hps: '750000',
+            lps: '490000',
+            qtyl: '40',
+            qtys: '6',
+          },
+        },
+        {
+          cards: '',
+          iconURL: 'https://db.irowiki.org/image/item/5017.png',
+          itemId: '5017',
+          modifiedAt: '2023-09-06T01:51:14.665Z',
+          name: 'Bone Helm',
+          refinement: '4',
+          last7days: {
+            avgl: '0',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '0',
+            qtys: '0',
+          },
+          last30days: {
+            avgl: '661111',
+            avgs: '658333',
+            hps: '666666',
+            lps: '650000',
+            qtyl: '3',
+            qtys: '2',
+          },
+        },
+        {
+          cards: '',
+          iconURL: 'https://db.irowiki.org/image/item/5017.png',
+          itemId: '5017',
+          modifiedAt: '2023-09-06T01:51:14.665Z',
+          name: 'Bone Helm',
+          refinement: '7',
+          last7days: {
+            avgl: '0',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '0',
+            qtys: '0',
+          },
+          last30days: {
+            avgl: '4250000',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '2',
+            qtys: '0',
+          },
+        },
+        {
+          cards: '',
+          iconURL: 'https://db.irowiki.org/image/item/5017.png',
+          itemId: '5017',
+          modifiedAt: '2023-09-06T01:51:14.665Z',
+          name: 'Bone Helm',
+          refinement: '5',
+          last7days: {
+            avgl: '0',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '0',
+            qtys: '0',
+          },
+          last30days: {
+            avgl: '1100000',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '3',
+            qtys: '0',
+          },
+        },
+        {
+          cards: '',
+          iconURL: 'https://db.irowiki.org/image/item/5017.png',
+          itemId: '5017',
+          modifiedAt: '2023-09-06T01:51:14.665Z',
+          name: 'Bone Helm',
+          refinement: '6',
+          last7days: {
+            avgl: '0',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '0',
+            qtys: '0',
+          },
+          last30days: {
+            avgl: '0',
+            avgs: '0',
+            hps: '0',
+            lps: '0',
+            qtyl: '0',
+            qtys: '0',
+          },
+        },
+      ],
+    },
+    error: undefined,
+    loading: undefined,
+  };
 
-  // const noDataRow = (
-  //   <tr>
-  //     <td colSpan={columns.length} className="whitespace-nowrap px-6 py-4">
-  //       <div className="text-center">
-  //         <span className="font-bold">No Data :(</span>
-  //       </div>
-  //     </td>
-  //   </tr>
-  // );
+  const noDataRow = (
+    <tr>
+      <td colSpan={columns.length} className="whitespace-nowrap px-6 py-4">
+        <div className="text-center">
+          <span className="font-bold">No Data :(</span>
+        </div>
+      </td>
+    </tr>
+  );
 
   const loadingDiv = (
     <tr>
@@ -186,10 +322,13 @@ export default function Page() {
     </tr>
   );
 
-  useEffect(() => {
-    console.log(`=> data`);
-    console.log(data);
-  }, [data]);
+  const bySearch = (i: ResponseData['items'][number]) =>
+    i.name.toLowerCase().includes(search?.toLocaleLowerCase() || '');
+
+  const byRefinement = (i: ResponseData['items'][number]) =>
+    refinement ? i.refinement === refinement : true;
+
+  const filteredData = data?.items.filter(bySearch).filter(byRefinement);
 
   return (
     <div className="w-full h-screen bg-gray-200 text-black">
@@ -213,17 +352,55 @@ export default function Page() {
           </div>
         </div>
 
-        <input
-          type="text"
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-        />
-
         {/* main content: table */}
-        <main className="mx-32 flex justify-center">
+        <main className="mx-32 flex flex-col gap-5 justify-center">
+          <div className="flex flex-row gap-5">
+            <div className="bg-white p-2 max-w-md rounded">
+              <input
+                type="text"
+                className="w-full"
+                placeholder="Search by text here..."
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+              />
+            </div>
+            <div className="bg-white p-2 w-14 rounded flex justify-center">
+              <select
+                className="bg-white"
+                value={refinement}
+                onChange={event => setRefinement(event.target.value)}
+              >
+                <option></option>
+                <option>0</option>
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+                <option>7</option>
+                <option>8</option>
+                <option>9</option>
+                <option>10</option>
+              </select>
+            </div>
+            <div className="bg-white p-2 w-36 rounded flex justify-center">
+              <select
+                className="bg-white"
+                value={timeFrame}
+                onChange={event => setTimeFrame(event.target.value)}
+              >
+                <option></option>
+                <option value={'allTime'}>All Time</option>
+                <option value={'last30days'}>Last 30 Days</option>
+                <option value={'last7days'}>Last 7 Days</option>
+              </select>
+            </div>
+          </div>
+
           <div className="bg-white p-2 rounded">
-            <table className="min-w-full text-left text-sm font-light">
-              <thead className="font-medium bg-green-200">
+            <table className="min-w-full text-sm font-light text-center rounded border border-gray-300 border-spacing-8">
+              <thead className="font-medium bg-gray-200">
                 {columns.map((column, i) => (
                   <th key={`${column.title}-${i}`} scope="col" className="p-2">
                     {column.tooltip ? (
@@ -235,69 +412,75 @@ export default function Page() {
                 ))}
               </thead>
               <tbody>
+                {/* loading spinner */}
                 {loading && loadingDiv}
 
-                {data?.items
-                  .filter(i =>
-                    i.name
-                      .toLowerCase()
-                      .includes(search?.toLocaleLowerCase() || ''),
-                  )
-                  .map((item, index) => (
-                    <tr key={`${index}-${item.itemId}`}>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        <img src={item.iconURL} alt={item.name} />
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.itemId}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.name}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.refinement}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.cards}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last30days.hps}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last7days.hps}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last30days.lps}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last7days.lps}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last30days.avgl}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last7days.avgl}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last30days.avgs}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last7days.avgs}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last30days.qtys}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last7days.qtys}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last30days.qtyl}
-                      </td>
-                      <td colSpan={1} className="pt-2 text-center font-mono">
-                        {item.last7days.qtyl}
-                      </td>
-                    </tr>
-                  ))}
+                {/* no data row */}
+                {filteredData && filteredData.length < 1 && noDataRow}
+
+                {/* rows */}
+                {filteredData.map((item, index) => (
+                  <tr
+                    key={`${index}-${item.itemId}`}
+                    className="even:bg-gray-50 odd:bg-white text-xs"
+                  >
+                    <td colSpan={1} className="pt-2 flex">
+                      <img
+                        className="mx-auto py-2"
+                        src={item.iconURL}
+                        alt={item.name}
+                      />
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.itemId}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.name}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.refinement !== '0' ? `+${item.refinement}` : '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.cards}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last30days.hps) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last7days.hps) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last30days.lps) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last7days.lps) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last30days.avgl) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last7days.avgl) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last30days.avgs) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {formatMoney(item.last7days.avgs) || '-'}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.last30days.qtys}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.last7days.qtys}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.last30days.qtyl}
+                    </td>
+                    <td colSpan={1} className="pt-2">
+                      {item.last7days.qtyl}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
