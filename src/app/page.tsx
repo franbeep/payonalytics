@@ -184,10 +184,12 @@ export default function Page() {
     </tr>
   );
 
-  const bySearch = <T extends { name: string; cards: string }>(i: T) => {
+  const bySearch = <T extends { name: string; cards: string; itemId: string }>(
+    i: T,
+  ) => {
     if (!search) return true;
 
-    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()}`;
+    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()} ${i.itemId.toLocaleLowerCase()}`;
 
     const searchWords = search.toLocaleLowerCase().split(' ');
 
