@@ -11,23 +11,11 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "extends": [
-    "next/core-web-vitals",
-    "airbnb",
-    "airbnb-typescript",
-    "plugin:react-prefer-function-component/recommended",
-    "prettier"
-  ],
-  "plugins": [
-    "@typescript-eslint",
-    "import",
-    "react-prefer-function-component"
-  ],
+  "extends": ["next/core-web-vitals"],
   "rules": {
     "strict": "error",
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
-    "import/no-unresolved": ["error"],
-    "no-underscore-dangle": ["none"]
+    "import/no-unresolved": ["error"]
   },
   "settings": {
     "import/parsers": {

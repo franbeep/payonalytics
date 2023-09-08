@@ -34,4 +34,5 @@ const apolloServer = new ApolloServer({
   schema,
   // formatError
 });
+
 export default startServerAndCreateNextHandler(apolloServer);
