@@ -95,6 +95,28 @@ export class ItemQueryResolver {
     } satisfies ResolversPerDays;
   }
 
+  @FieldResolver(returns => ResolversPerDays)
+  async allTime(@Root() item: Item) {
+    const { vendHist, sellHist } = item;
+
+    return {
+      hps: maxBy(sellHist, i => i.price)?.price.toString() || '0',
+      lps: minBy(sellHist, i => i.price)?.price.toString() || '0',
+      avgl: vendHist.length
+        ? Math.round(
+            vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
+          ).toString()
+        : '0',
+      avgs: sellHist.length
+        ? Math.round(
+            sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
+          ).toString()
+        : '0',
+      qtyl: vendHist.length.toString(),
+      qtys: sellHist.length.toString(),
+    } satisfies ResolversPerDays;
+  }
+
   @FieldResolver()
   async mppi(@Root() item: Item) {
     return '';

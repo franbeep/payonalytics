@@ -36,6 +36,9 @@ export class Item {
   @Field(() => ResolversPerDays)
   last7days!: FixDecorator<ResolversPerDays>;
 
+  @Field(() => ResolversPerDays)
+  allTime!: FixDecorator<ResolversPerDays>;
+
   // misc
 
   @Field()

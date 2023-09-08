@@ -4,7 +4,7 @@ import { useQuery } from '@apollo/experimental-nextjs-app-support/ssr';
 import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { chunk } from 'lodash';
 
 type ResponseData = {
@@ -24,6 +24,14 @@ type ResponseData = {
       qtys: string;
     };
     last30days: {
+      avgl: string;
+      avgs: string;
+      hps: string;
+      lps: string;
+      qtyl: string;
+      qtys: string;
+    };
+    allTime: {
       avgl: string;
       avgs: string;
       hps: string;
@@ -107,6 +115,14 @@ const query = gql`
         qtyl
         qtys
       }
+      allTime {
+        avgl
+        avgs
+        hps
+        lps
+        qtyl
+        qtys
+      }
     }
   }
 `;
@@ -125,138 +141,12 @@ const formatMoney = (str: string) => {
 export default function Page() {
   const [search, setSearch] = useState<string>();
   const [refinement, setRefinement] = useState<string>();
-  const [timeFrame, setTimeFrame] = useState<string>('last30days');
+  const [timeFrame, setTimeFrame] = useState<
+    'last7days' | 'last30days' | 'allTime'
+  >('last30days');
+  const [pagination, setPagination] = useState<number>(0);
 
-  // const { data, error, loading } = useQuery<ResponseData>(query);
-
-  const { data, error, loading } = {
-    data: {
-      items: [
-        {
-          cards: '',
-          iconURL: 'https://db.irowiki.org/image/item/5017.png',
-          itemId: '5017',
-          modifiedAt: '2023-09-06T01:51:14.665Z',
-          name: 'Bone Helm',
-          refinement: '0',
-          last7days: {
-            avgl: '586130',
-            avgs: '490000',
-            hps: '490000',
-            lps: '490000',
-            qtyl: '6',
-            qtys: '1',
-          },
-          last30days: {
-            avgl: '735641',
-            avgs: '598333',
-            hps: '750000',
-            lps: '490000',
-            qtyl: '40',
-            qtys: '6',
-          },
-        },
-        {
-          cards: '',
-          iconURL: 'https://db.irowiki.org/image/item/5017.png',
-          itemId: '5017',
-          modifiedAt: '2023-09-06T01:51:14.665Z',
-          name: 'Bone Helm',
-          refinement: '4',
-          last7days: {
-            avgl: '0',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '0',
-            qtys: '0',
-          },
-          last30days: {
-            avgl: '661111',
-            avgs: '658333',
-            hps: '666666',
-            lps: '650000',
-            qtyl: '3',
-            qtys: '2',
-          },
-        },
-        {
-          cards: '',
-          iconURL: 'https://db.irowiki.org/image/item/5017.png',
-          itemId: '5017',
-          modifiedAt: '2023-09-06T01:51:14.665Z',
-          name: 'Bone Helm',
-          refinement: '7',
-          last7days: {
-            avgl: '0',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '0',
-            qtys: '0',
-          },
-          last30days: {
-            avgl: '4250000',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '2',
-            qtys: '0',
-          },
-        },
-        {
-          cards: '',
-          iconURL: 'https://db.irowiki.org/image/item/5017.png',
-          itemId: '5017',
-          modifiedAt: '2023-09-06T01:51:14.665Z',
-          name: 'Bone Helm',
-          refinement: '5',
-          last7days: {
-            avgl: '0',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '0',
-            qtys: '0',
-          },
-          last30days: {
-            avgl: '1100000',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '3',
-            qtys: '0',
-          },
-        },
-        {
-          cards: '',
-          iconURL: 'https://db.irowiki.org/image/item/5017.png',
-          itemId: '5017',
-          modifiedAt: '2023-09-06T01:51:14.665Z',
-          name: 'Bone Helm',
-          refinement: '6',
-          last7days: {
-            avgl: '0',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '0',
-            qtys: '0',
-          },
-          last30days: {
-            avgl: '0',
-            avgs: '0',
-            hps: '0',
-            lps: '0',
-            qtyl: '0',
-            qtys: '0',
-          },
-        },
-      ],
-    },
-    error: undefined,
-    loading: undefined,
-  };
+  const { data, error, loading } = useQuery<ResponseData>(query);
 
   const noDataRow = (
     <tr>
@@ -294,13 +184,39 @@ export default function Page() {
     </tr>
   );
 
-  const bySearch = (i: ResponseData['items'][number]) =>
+  const bySearch = <T extends { name: string }>(i: T) =>
     i.name.toLowerCase().includes(search?.toLocaleLowerCase() || '');
 
-  const byRefinement = (i: ResponseData['items'][number]) =>
+  const byRefinement = <T extends { refinement: string }>(i: T) =>
     refinement ? i.refinement === refinement : true;
 
   const filteredData = data?.items.filter(bySearch).filter(byRefinement);
+
+  const paginatedData = chunk(filteredData, 15);
+
+  const paginatedIndexes = useMemo(() => {
+    let indexes = new Set<number>();
+    if (pagination !== 0) {
+      // start
+      indexes.add(0);
+    }
+
+    const arbitraryNumber = 6;
+    const arr = Array(arbitraryNumber)
+      .fill(0)
+      .map((_: any, i) => pagination + i - arbitraryNumber / 3);
+
+    arr
+      .filter(n => n > 0 && n < paginatedData.length - 1)
+      .forEach(n => indexes.add(n));
+
+    if (pagination !== paginatedData.length - 1) {
+      // end
+      indexes.add(paginatedData.length - 1);
+    }
+
+    return Array.from(indexes);
+  }, [pagination, paginatedData]);
 
   return (
     <div className="w-full h-screen bg-gray-200 text-black">
@@ -361,7 +277,7 @@ export default function Page() {
                 className="bg-white"
                 value={timeFrame}
                 placeholder="Time Frame"
-                onChange={event => setTimeFrame(event.target.value)}
+                onChange={event => setTimeFrame(event.target.value as any)}
               >
                 <option value={'allTime'}>All Time</option>
                 <option value={'last30days'}>Last 30 Days</option>
@@ -370,7 +286,7 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="bg-white p-2 rounded">
+          <div className="bg-white p-2 rounded flex flex-col gap-2">
             <table className="min-w-full text-sm font-light text-center rounded border border-gray-300 border-spacing-8">
               <thead className="font-medium bg-gray-200">
                 {columns.map((column, i) => (
@@ -391,7 +307,7 @@ export default function Page() {
                 {filteredData && filteredData.length < 1 && noDataRow}
 
                 {/* rows */}
-                {filteredData.map((item, index) => (
+                {paginatedData[pagination]?.map((item, index) => (
                   <tr
                     key={`${index}-${item.itemId}`}
                     className="even:bg-gray-50 odd:bg-white text-xs"
@@ -416,69 +332,40 @@ export default function Page() {
                       {item.cards}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(
-                        item[
-                          timeFrame as keyof Pick<
-                            typeof item,
-                            'last30days' | 'last7days'
-                          >
-                        ].hps,
-                      ) || '-'}
+                      {formatMoney(item[timeFrame].hps) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(
-                        item[
-                          timeFrame as keyof Pick<
-                            typeof item,
-                            'last30days' | 'last7days'
-                          >
-                        ].lps,
-                      ) || '-'}
+                      {formatMoney(item[timeFrame].lps) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(
-                        item[
-                          timeFrame as keyof Pick<
-                            typeof item,
-                            'last30days' | 'last7days'
-                          >
-                        ].avgl,
-                      ) || '-'}
+                      {formatMoney(item[timeFrame].avgl) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(
-                        item[
-                          timeFrame as keyof Pick<
-                            typeof item,
-                            'last30days' | 'last7days'
-                          >
-                        ].avgs,
-                      ) || '-'}
+                      {formatMoney(item[timeFrame].avgs) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {
-                        item[
-                          timeFrame as keyof Pick<
-                            typeof item,
-                            'last30days' | 'last7days'
-                          >
-                        ].qtys
-                      }
+                      {item[timeFrame].qtys}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {
-                        item[
-                          timeFrame as keyof Pick<
-                            typeof item,
-                            'last30days' | 'last7days'
-                          >
-                        ].qtyl
-                      }
+                      {item[timeFrame].qtyl}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <div className="min-w-full flex gap-2 justify-center">
+              {paginatedIndexes.map(i => {
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setPagination(i)}
+                    className="px-2 bg-white rounded border border-gray-200"
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </main>
       </div>
