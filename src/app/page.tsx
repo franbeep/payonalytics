@@ -184,9 +184,19 @@ export default function Page() {
     </tr>
   );
 
-  const bySearch = <T extends { name: string }>(i: T) =>
-    i.name.toLowerCase().includes(search?.toLocaleLowerCase() || '');
+  const bySearch = <T extends { name: string; cards: string }>(i: T) => {
+    if (!search) return true;
 
+    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()}`;
+
+    const searchWords = search.toLocaleLowerCase().split(' ');
+
+    for (const word of searchWords) {
+      if (!names.includes(word)) return false;
+    }
+
+    return true;
+  };
   const byRefinement = <T extends { refinement: string }>(i: T) =>
     refinement ? i.refinement === refinement : true;
 
