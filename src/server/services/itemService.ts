@@ -85,11 +85,11 @@ export class ItemService {
   }
 
   async getItems() {
-    const rawItems = await this.mongoRepository.getAllRawItems();
+    // const rawItems = await this.mongoRepository.getAllRawItems();
 
-    console.log('rawItems.length', rawItems.length);
+    // return rawItems.map(this.toDTO).flat();
 
-    return rawItems.map(this.toDTO).flat();
+    return this.mongoRepository.getProcessedItems();
   }
 
   async getFullItem(itemId: string) {
@@ -102,6 +102,14 @@ export class ItemService {
     const item = await this.payonPC.getItemHistory(String(itemId));
 
     return item;
+  }
+
+  async processItems() {
+    const rawItems = await this.mongoRepository.getAllRawItems();
+
+    const processedItems = rawItems.map(this.toDTO).flat();
+
+    await this.mongoRepository.saveProcessedItems(processedItems);
   }
 
   private toDTO({ itemId, itemName, rawData, modifiedAt }: PayonMongoData) {

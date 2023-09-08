@@ -31,6 +31,13 @@ export class ItemMutationResolver {
   }
 
   @Mutation(returns => Boolean)
+  async processItems() {
+    await this.itemService.processItems();
+
+    return true;
+  }
+
+  @Mutation(returns => Boolean)
   async refreshListOfItems() {
     await this.itemService.refreshListOfItems();
 

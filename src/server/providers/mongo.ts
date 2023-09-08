@@ -1,8 +1,11 @@
 import type { Db as Database, Filter, IntegerType } from 'mongodb';
 import { HistoryItems } from './payonPC';
+import { Item } from '../resolvers/inputs';
 
 const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
 const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
+const PROCESSED_ITEMS_COLLECTION_NAME = 'processeditems';
+
 export type PayonMongoData = {
   itemId: string;
   itemName: string;
@@ -79,6 +82,27 @@ export class MongoRepository {
     await collection.deleteMany(filter);
   }
 
+  async saveProcessedItems(
+    items: Pick<
+      Item,
+      | 'itemId'
+      | 'modifiedAt'
+      | 'name'
+      | 'refinement'
+      | 'cards'
+      | 'sellHist'
+      | 'vendHist'
+    >[],
+  ) {
+    const collection = this.getProcessedItemsCollection();
+    await collection.insertMany(items);
+  }
+
+  async getProcessedItems() {
+    const collection = this.getProcessedItemsCollection();
+    return await collection.find().toArray();
+  }
+
   /* list of item ids methods */
 
   async getListOfItems() {
@@ -117,5 +141,20 @@ export class MongoRepository {
     return this.database.collection<ItemListMongoData>(
       LIST_OF_ITEM_IDS_COLLECTION_NAME,
     );
+  }
+
+  private getProcessedItemsCollection() {
+    return this.database.collection<
+      Pick<
+        Item,
+        | 'itemId'
+        | 'modifiedAt'
+        | 'name'
+        | 'refinement'
+        | 'cards'
+        | 'sellHist'
+        | 'vendHist'
+      >
+    >(PROCESSED_ITEMS_COLLECTION_NAME);
   }
 }
