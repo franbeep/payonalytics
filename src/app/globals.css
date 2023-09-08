@@ -1,5 +1,12 @@
 @tailwind base;
 @tailwind components;
+
+.decoration-dotted {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+
 @tailwind utilities;
 
 :root {

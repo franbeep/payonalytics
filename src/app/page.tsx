@@ -4,8 +4,10 @@ import { useQuery } from '@apollo/experimental-nextjs-app-support/ssr';
 import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { chunk } from 'lodash';
+
+const DEFAULT_PAGINATION = 0;
 
 type ResponseData = {
   items: Array<{
@@ -144,9 +146,13 @@ export default function Page() {
   const [timeFrame, setTimeFrame] = useState<
     'last7days' | 'last30days' | 'allTime'
   >('last30days');
-  const [pagination, setPagination] = useState<number>(0);
+  const [pagination, setPagination] = useState<number>(DEFAULT_PAGINATION);
 
   const { data, error, loading } = useQuery<ResponseData>(query);
+
+  useEffect(() => {
+    setPagination(DEFAULT_PAGINATION);
+  }, [search]);
 
   const noDataRow = (
     <tr>
@@ -199,13 +205,12 @@ export default function Page() {
 
     return true;
   };
+
   const byRefinement = <T extends { refinement: string }>(i: T) =>
     refinement ? i.refinement === refinement : true;
 
   const filteredData = data?.items.filter(bySearch).filter(byRefinement);
-
   const paginatedData = chunk(filteredData, 15);
-
   const paginatedIndexes = useMemo(() => {
     let indexes = new Set<number>();
     // add first index
@@ -298,7 +303,13 @@ export default function Page() {
             <table className="min-w-full text-sm font-light text-center rounded border border-gray-300 border-spacing-8">
               <thead className="font-medium bg-gray-200">
                 {columns.map((column, i) => (
-                  <th key={`${column.title}-${i}`} scope="col" className="p-2">
+                  <th
+                    key={`${column.title}-${i}`}
+                    scope="col"
+                    className={`p-2 ${
+                      column.tooltip ? 'decoration-dotted' : ''
+                    }`}
+                  >
                     {column.tooltip ? (
                       <span title={column.tooltip}>{column.title}</span>
                     ) : (
