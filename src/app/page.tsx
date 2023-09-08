@@ -208,10 +208,8 @@ export default function Page() {
 
   const paginatedIndexes = useMemo(() => {
     let indexes = new Set<number>();
-    if (pagination !== 0) {
-      // start
-      indexes.add(0);
-    }
+    // add first index
+    indexes.add(0);
 
     const arbitraryNumber = 6;
     const arr = Array(arbitraryNumber)
@@ -222,10 +220,8 @@ export default function Page() {
       .filter(n => n > 0 && n < paginatedData.length - 1)
       .forEach(n => indexes.add(n));
 
-    if (pagination !== paginatedData.length - 1) {
-      // end
-      indexes.add(paginatedData.length - 1);
-    }
+    // add last index
+    indexes.add(paginatedData.length - 1);
 
     return Array.from(indexes);
   }, [pagination, paginatedData]);
@@ -371,7 +367,9 @@ export default function Page() {
                   <button
                     key={i}
                     onClick={() => setPagination(i)}
-                    className="px-2 bg-white rounded border border-gray-200"
+                    className={`px-2 ${
+                      pagination === i ? 'bg-gray-200' : 'bg-white'
+                    } rounded border border-gray-200`}
                   >
                     {i + 1}
                   </button>
