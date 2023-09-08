@@ -57,57 +57,29 @@ const columns: Array<{
     title: 'Cards',
   },
   {
-    title: 'HPS30',
-    tooltip: 'Highest Price Sold in 30 days',
+    title: 'HPS',
+    tooltip: 'Highest Price Sold in the time frame',
   },
   {
-    title: 'HPS7',
-    tooltip: 'Highest Price Sold in 7 days',
+    title: 'LPS',
+    tooltip: 'Lowest Price Sold in the time frame',
   },
   {
-    title: 'LPS30',
-    tooltip: 'Lowest Price Sold in 30 days',
+    title: 'AVGL',
+    tooltip: 'Average Listing Price in the time frame',
   },
   {
-    title: 'LPS7',
-    tooltip: 'Lowest Price Sold in 7 days',
+    title: 'AVGS',
+    tooltip: 'Average Sold Price in the time frame',
   },
   {
-    title: 'AVGL30',
-    tooltip: 'Average Listing Price in 30 days',
+    title: 'QTYS',
+    tooltip: 'Quantity Sold in the time frame',
   },
   {
-    title: 'AVGL7',
-    tooltip: 'Average Listing Price in 7 days',
+    title: 'QTYL',
+    tooltip: 'Quantity Listed in the time frame',
   },
-  {
-    title: 'AVGS30',
-    tooltip: 'Average Sold Price in 30 days',
-  },
-  {
-    title: 'AVGS7',
-    tooltip: 'Average Sold Price in 7 days',
-  },
-  {
-    title: 'QTYS30',
-    tooltip: 'Quantity Sold in 30 days',
-  },
-  {
-    title: 'QTYS7',
-    tooltip: 'Quantity Sold in 7 days',
-  },
-  {
-    title: 'QTYL30',
-    tooltip: 'Quantity Listed in 30 days',
-  },
-  {
-    title: 'QTYL7',
-    tooltip: 'Quantity Listed in 7 days',
-  },
-  // {
-  //   title: 'MPPI',
-  //   tooltip: 'Max Profit Per Item',
-  // },
 ];
 
 const query = gql`
@@ -153,7 +125,7 @@ const formatMoney = (str: string) => {
 export default function Page() {
   const [search, setSearch] = useState<string>();
   const [refinement, setRefinement] = useState<string>();
-  const [timeFrame, setTimeFrame] = useState<string>();
+  const [timeFrame, setTimeFrame] = useState<string>('last30days');
 
   // const { data, error, loading } = useQuery<ResponseData>(query);
 
@@ -388,9 +360,9 @@ export default function Page() {
               <select
                 className="bg-white"
                 value={timeFrame}
+                placeholder="Time Frame"
                 onChange={event => setTimeFrame(event.target.value)}
               >
-                <option></option>
                 <option value={'allTime'}>All Time</option>
                 <option value={'last30days'}>Last 30 Days</option>
                 <option value={'last7days'}>Last 7 Days</option>
@@ -444,40 +416,64 @@ export default function Page() {
                       {item.cards}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last30days.hps) || '-'}
+                      {formatMoney(
+                        item[
+                          timeFrame as keyof Pick<
+                            typeof item,
+                            'last30days' | 'last7days'
+                          >
+                        ].hps,
+                      ) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last7days.hps) || '-'}
+                      {formatMoney(
+                        item[
+                          timeFrame as keyof Pick<
+                            typeof item,
+                            'last30days' | 'last7days'
+                          >
+                        ].lps,
+                      ) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last30days.lps) || '-'}
+                      {formatMoney(
+                        item[
+                          timeFrame as keyof Pick<
+                            typeof item,
+                            'last30days' | 'last7days'
+                          >
+                        ].avgl,
+                      ) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last7days.lps) || '-'}
+                      {formatMoney(
+                        item[
+                          timeFrame as keyof Pick<
+                            typeof item,
+                            'last30days' | 'last7days'
+                          >
+                        ].avgs,
+                      ) || '-'}
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last30days.avgl) || '-'}
+                      {
+                        item[
+                          timeFrame as keyof Pick<
+                            typeof item,
+                            'last30days' | 'last7days'
+                          >
+                        ].qtys
+                      }
                     </td>
                     <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last7days.avgl) || '-'}
-                    </td>
-                    <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last30days.avgs) || '-'}
-                    </td>
-                    <td colSpan={1} className="pt-2">
-                      {formatMoney(item.last7days.avgs) || '-'}
-                    </td>
-                    <td colSpan={1} className="pt-2">
-                      {item.last30days.qtys}
-                    </td>
-                    <td colSpan={1} className="pt-2">
-                      {item.last7days.qtys}
-                    </td>
-                    <td colSpan={1} className="pt-2">
-                      {item.last30days.qtyl}
-                    </td>
-                    <td colSpan={1} className="pt-2">
-                      {item.last7days.qtyl}
+                      {
+                        item[
+                          timeFrame as keyof Pick<
+                            typeof item,
+                            'last30days' | 'last7days'
+                          >
+                        ].qtyl
+                      }
                     </td>
                   </tr>
                 ))}
