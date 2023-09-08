@@ -4,8 +4,8 @@ export type FixDecorator<T> = T;
 
 @ObjectType()
 export class Item {
-  @Field(type => ID)
-  id!: string;
+  @Field()
+  itemId!: string;
 
   @Field()
   name!: string;

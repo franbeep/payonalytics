@@ -4,13 +4,32 @@ import { useQuery } from '@apollo/experimental-nextjs-app-support/ssr';
 import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 type ResponseData = {
   items: Array<{
     iconURL: string;
-    id: string;
+    itemId: string;
     modifiedAt: string;
     name: string;
+    cards: string;
+    refinement: string;
+    last7days: {
+      avgl: string;
+      avgs: string;
+      hps: string;
+      lps: string;
+      qtyl: string;
+      qtys: string;
+    };
+    last30days: {
+      avgl: string;
+      avgs: string;
+      hps: string;
+      lps: string;
+      qtyl: string;
+      qtys: string;
+    };
   }>;
 };
 
@@ -93,36 +112,53 @@ const columns: Array<{
 const query = gql`
   query Items {
     items {
+      cards
       iconURL
-      id
+      itemId
       modifiedAt
       name
+      refinement
+      last7days {
+        avgl
+        avgs
+        hps
+        lps
+        qtyl
+        qtys
+      }
+      last30days {
+        avgl
+        avgs
+        hps
+        lps
+        qtyl
+        qtys
+      }
     }
   }
 `;
 
 export default function Page() {
-  const { data, error, loading } = useQuery<ResponseData>(query);
+  const [search, setSearch] = useState<string>();
 
-  const testRow = (
-    <tr>
-      {columns.map((_, i) => (
-        <td className="pt-2 text-center font-mono" key={`t${i}`}>
-          {i}
-        </td>
-      ))}
-    </tr>
-  );
+  const { data, error, loading } = useQuery<ResponseData>(query, {
+    fetchPolicy: 'network-only',
+  });
 
-  const noDataRow = (
-    <tr>
-      <td colSpan={columns.length} className="whitespace-nowrap px-6 py-4">
-        <div className="text-center">
-          <span className="font-bold">No Data :(</span>
-        </div>
-      </td>
-    </tr>
-  );
+  if (error) {
+    console.log(`error`);
+    console.log(error);
+  }
+
+  // const noDataRow = (
+  //   <tr>
+  //     <td colSpan={columns.length} className="whitespace-nowrap px-6 py-4">
+  //       <div className="text-center">
+  //         <span className="font-bold">No Data :(</span>
+  //       </div>
+  //     </td>
+  //   </tr>
+  // );
 
   const loadingDiv = (
     <tr>
@@ -150,6 +186,11 @@ export default function Page() {
     </tr>
   );
 
+  useEffect(() => {
+    console.log(`=> data`);
+    console.log(data);
+  }, [data]);
+
   return (
     <div className="w-full h-screen bg-gray-200 text-black">
       {/* container */}
@@ -172,9 +213,15 @@ export default function Page() {
           </div>
         </div>
 
+        <input
+          type="text"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+        />
+
         {/* main content: table */}
         <main className="mx-32 flex justify-center">
-          <div className="bg-white p-2 rounded max-w-7xl">
+          <div className="bg-white p-2 rounded">
             <table className="min-w-full text-left text-sm font-light">
               <thead className="font-medium bg-green-200">
                 {columns.map((column, i) => (
@@ -190,24 +237,67 @@ export default function Page() {
               <tbody>
                 {loading && loadingDiv}
 
-                {data?.items.map((item, index) => (
-                  <tr key={index}>
-                    <td colSpan={1} className="pt-2 text-center font-mono">
-                      <img
-                        src={item.iconURL}
-                        alt={item.name}
-                        width={24}
-                        height={24}
-                      />
-                    </td>
-                    <td colSpan={1} className="pt-2 text-center font-mono">
-                      {item.id}
-                    </td>
-                    <td colSpan={1} className="pt-2 text-center font-mono">
-                      {item.name}
-                    </td>
-                  </tr>
-                ))}
+                {data?.items
+                  .filter(i =>
+                    i.name
+                      .toLowerCase()
+                      .includes(search?.toLocaleLowerCase() || ''),
+                  )
+                  .map((item, index) => (
+                    <tr key={`${index}-${item.itemId}`}>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        <img src={item.iconURL} alt={item.name} />
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.itemId}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.name}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.refinement}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.cards}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last30days.hps}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last7days.hps}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last30days.lps}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last7days.lps}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last30days.avgl}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last7days.avgl}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last30days.avgs}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last7days.avgs}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last30days.qtys}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last7days.qtys}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last30days.qtyl}
+                      </td>
+                      <td colSpan={1} className="pt-2 text-center font-mono">
+                        {item.last7days.qtyl}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

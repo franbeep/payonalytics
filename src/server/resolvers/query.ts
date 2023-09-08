@@ -27,8 +27,8 @@ export class ItemQueryResolver {
   }
 
   @FieldResolver()
-  async iconURL(@Root() { id }: Item) {
-    return `${process.env.ICON_URL_BASE_ENDPOINT!}/${id}.png`;
+  async iconURL(@Root() { itemId }: Item) {
+    return `${process.env.ICON_URL_BASE_ENDPOINT!}/${itemId}.png`;
   }
 
   @FieldResolver()

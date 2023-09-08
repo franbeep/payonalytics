@@ -153,7 +153,7 @@ export class ItemService {
       const vendHist = vendHistGroupedByRefCards[key] || [];
 
       acc[key] = {
-        id: itemId,
+        itemId,
         name: itemName,
         modifiedAt,
         refinement,
@@ -163,7 +163,7 @@ export class ItemService {
       };
 
       return acc;
-    }, {} as Record<string, Pick<Item, 'id' | 'name' | 'modifiedAt' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'>>);
+    }, {} as Record<string, Pick<Item, 'itemId' | 'name' | 'modifiedAt' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'>>);
 
     return Object.values(itemsArray);
   }
