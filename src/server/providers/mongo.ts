@@ -5,6 +5,7 @@ import { Item } from '../resolvers/inputs';
 const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
 const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
 const PROCESSED_ITEMS_COLLECTION_NAME = 'processeditems';
+const VENDING_ITEMS_COLLECTION_NAME = 'vendingitems';
 
 export type PayonMongoData = {
   itemId: string;
@@ -19,17 +20,39 @@ export type ItemListMongoData = {
   createdAt: Date;
   itemIds: Array<number>;
 };
+export type VendingItemsMongoData = {
+  itemId: number;
+  refinement: string;
+  cards: string;
+  vendingData: Array<{
+    listedDate: Date;
+    shopName: string;
+    amount: number;
+    price: number;
+    coordinates: {
+      map: string;
+      x: number;
+      y: number;
+    };
+  }>;
+};
 
 export class MongoRepository {
   constructor(private database: Database) {}
 
   /* payon stories methods */
 
+  /**
+   * @deprecated: opt to insert all data already processed
+   */
   async saveRawItem(data: PayonMongoData) {
     const collection = this.getPayonCollection();
     await collection.insertOne(data);
   }
 
+  /**
+   * @deprecated: opt to insert all data already processed
+   */
   async saveRawItems(items: Array<PayonMongoData>) {
     const collection = this.getPayonCollection();
     await collection.insertMany(items);
@@ -129,6 +152,47 @@ export class MongoRepository {
     await collection.deleteMany(filter);
   }
 
+  /* vending items methods */
+
+  async getVendingItems() {
+    const collection = this.getVendingItemsCollection();
+    const result = await collection
+      .aggregate<{
+        _id: string;
+        first: VendingItemsMongoData;
+      }>(
+        [
+          {
+            $sort: {
+              _id: -1,
+            },
+          },
+          {
+            $group: {
+              _id: '$itemId',
+              first: { $first: '$$ROOT' },
+            },
+          },
+        ],
+        {
+          allowDiskUse: true,
+        },
+      )
+      .toArray();
+
+    return result.map(item => item.first);
+  }
+
+  async insertVendingItems(vendingItems: Array<VendingItemsMongoData>) {
+    const collection = this.getVendingItemsCollection();
+    await collection.insertMany(vendingItems);
+  }
+
+  async deleteVendingItems(filter: Filter<VendingItemsMongoData>) {
+    const collection = this.getVendingItemsCollection();
+    await collection.deleteMany(filter);
+  }
+
   /* collection methods */
 
   private getPayonCollection() {
@@ -156,5 +220,12 @@ export class MongoRepository {
         | 'vendHist'
       >
     >(PROCESSED_ITEMS_COLLECTION_NAME);
+  }
+
+  private getVendingItemsCollection() {
+    // VENDING_ITEMS_COLLECTION_NAME
+    return this.database.collection<VendingItemsMongoData>(
+      LIST_OF_ITEM_IDS_COLLECTION_NAME,
+    );
   }
 }

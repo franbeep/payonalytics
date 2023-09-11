@@ -4,6 +4,7 @@ import {
   PayonMongoData,
   PayonPC,
   RagnApi,
+  VendingItemsMongoData,
 } from '../providers';
 import { subDays } from 'date-fns';
 import { coveredItemIds, itemNames } from '@/server/constants';
@@ -31,13 +32,15 @@ export class ItemService {
     console.time(`[refreshHistory] Done!`);
 
     // delete old records
-    console.log(`[refreshHistory] Deleting records...`);
-    await this.mongoRepository.deleteRawItems({
-      modifiedAt: { $lte: subDays(new Date(), 1) },
-    });
-    await this.mongoRepository.deleteListOfItems({
-      createdAt: { $lte: subDays(new Date(), 1) },
-    });
+    if (fullRefresh) {
+      console.log(`[refreshHistory] Deleting records...`);
+      await this.mongoRepository.deleteRawItems({
+        modifiedAt: { $lte: subDays(new Date(), 2) },
+      });
+      await this.mongoRepository.deleteListOfItems({
+        createdAt: { $lte: subDays(new Date(), 2) },
+      });
+    }
 
     // get list of item ids
     const itemIds = fullRefresh
@@ -84,6 +87,65 @@ export class ItemService {
     await this.mongoRepository.insertListOfItems(listOfItemIds.map(Number));
   }
 
+  async refreshVendingItems() {
+    console.time(`[refreshVendingItems] Done!`);
+
+    // delete old records
+    console.log(`[refreshVendingItems] Deleting records...`);
+    await this.mongoRepository.deleteVendingItems({
+      modifiedAt: { $lte: subDays(new Date(), 2) },
+    });
+
+    // get list of item ids
+    const { itemIds } = await this.mongoRepository.getListOfItems();
+
+    // fetch new records
+    let count = 1;
+    const listOfVendingItemsById: Array<VendingItemsMongoData> = [];
+    console.log(`[refreshVendingItems] Fetching new records...`);
+    for (const itemIdNumber of itemIds) {
+      const itemId = String(itemIdNumber);
+
+      console.log(
+        `[refreshVendingItems] ${itemId} [${count++}/${itemIds.length}]`,
+      );
+
+      // get item history details
+      const item = await this.payonPC.getItemHistoryDetails(itemId);
+
+      const [firstRecord] = item;
+      if (!firstRecord) continue;
+
+      listOfVendingItemsById.push({
+        itemId: firstRecord.id,
+        refinement: `${firstRecord.refine}`,
+        cards: joinCards({
+          c0: firstRecord.card0,
+          c1: firstRecord.card1,
+          c2: firstRecord.card2,
+          c3: firstRecord.card3,
+        }),
+        vendingData: item.map(i => ({
+          listedDate: new Date(i.time),
+          shopName: i.shop_name,
+          amount: i.amount,
+          price: i.price,
+          coordinates: {
+            map: i.map,
+            x: i.x,
+            y: i.y,
+          },
+        })),
+      });
+
+      await sleep(TIMEOUT);
+    }
+
+    await this.mongoRepository.insertVendingItems(listOfVendingItemsById);
+
+    console.timeEnd(`[refreshVendingItems] Done!`);
+  }
+
   async getItems() {
     // const rawItems = await this.mongoRepository.getAllRawItems();
 
@@ -110,6 +172,10 @@ export class ItemService {
     const processedItems = rawItems.map(this.toDTO).flat();
 
     await this.mongoRepository.saveProcessedItems(processedItems);
+  }
+
+  async getCurrentVendingItems() {
+    //
   }
 
   private toDTO({ itemId, itemName, rawData, modifiedAt }: PayonMongoData) {
