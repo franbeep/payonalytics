@@ -5,7 +5,7 @@ import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
-import { chunk } from 'lodash';
+import { chunk, get, orderBy } from 'lodash';
 
 const DEFAULT_PAGINATION = 0;
 
@@ -44,53 +44,9 @@ type ResponseData = {
   }>;
 };
 
-const oswald = Oswald({ subsets: ['latin'] });
+type TimeFrame = 'last7days' | 'last30days' | 'allTime';
 
-const columns: Array<{
-  title: string;
-  tooltip?: string;
-}> = [
-  {
-    title: '', // icon
-  },
-  {
-    title: 'ID',
-  },
-  {
-    title: 'Name',
-  },
-  {
-    title: 'Ref.',
-    tooltip: 'Refinement',
-  },
-  {
-    title: 'Cards',
-  },
-  {
-    title: 'HPS',
-    tooltip: 'Highest Price Sold in the time frame',
-  },
-  {
-    title: 'LPS',
-    tooltip: 'Lowest Price Sold in the time frame',
-  },
-  {
-    title: 'AVGL',
-    tooltip: 'Average Listing Price in the time frame',
-  },
-  {
-    title: 'AVGS',
-    tooltip: 'Average Sold Price in the time frame',
-  },
-  {
-    title: 'QTYS',
-    tooltip: 'Quantity Sold in the time frame',
-  },
-  {
-    title: 'QTYL',
-    tooltip: 'Quantity Listed in the time frame',
-  },
-];
+const oswald = Oswald({ subsets: ['latin'] });
 
 const query = gql`
   query Items {
@@ -129,6 +85,70 @@ const query = gql`
   }
 `;
 
+const genColumns = (timeFrame: TimeFrame) => [
+  {
+    title: '', // icon
+    width: '8',
+  },
+  {
+    title: 'ID',
+    field: 'itemId',
+    width: '14',
+  },
+  {
+    title: 'Name',
+    field: 'name',
+    width: '36',
+  },
+  {
+    title: 'Ref.',
+    tooltip: 'Refinement',
+    field: 'refinement',
+    width: '8',
+  },
+  {
+    title: 'Cards',
+    field: 'cards',
+    width: '1/3',
+  },
+  {
+    title: 'HPS',
+    tooltip: 'Highest Price Sold in the time frame',
+    field: `${timeFrame}.hps`,
+    width: '36',
+  },
+  {
+    title: 'LPS',
+    tooltip: 'Lowest Price Sold in the time frame',
+    field: `${timeFrame}.lps`,
+    width: '36',
+  },
+  {
+    title: 'AVGL',
+    tooltip: 'Average Listing Price in the time frame',
+    field: `${timeFrame}.avgl`,
+    width: '36',
+  },
+  {
+    title: 'AVGS',
+    tooltip: 'Average Sold Price in the time frame',
+    field: `${timeFrame}.avgs`,
+    width: '36',
+  },
+  {
+    title: 'QTYS',
+    tooltip: 'Quantity Sold in the time frame',
+    field: `${timeFrame}.qtys`,
+    width: '36',
+  },
+  {
+    title: 'QTYL',
+    tooltip: 'Quantity Listed in the time frame',
+    field: `${timeFrame}.qtyl`,
+    width: '36',
+  },
+];
+
 const formatMoney = (str: string) => {
   if (str === '0') return '-';
 
@@ -143,16 +163,69 @@ const formatMoney = (str: string) => {
 export default function Page() {
   const [search, setSearch] = useState<string>();
   const [refinement, setRefinement] = useState<string>();
-  const [timeFrame, setTimeFrame] = useState<
-    'last7days' | 'last30days' | 'allTime'
-  >('last30days');
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>('last30days');
   const [pagination, setPagination] = useState<number>(DEFAULT_PAGINATION);
-
+  const [sorting, setSorting] = useState<string>('name');
+  const [sortingOrder, setSortingOrder] = useState<'asc' | 'desc'>('asc');
   const { data, error, loading } = useQuery<ResponseData>(query);
 
   useEffect(() => {
     setPagination(DEFAULT_PAGINATION);
-  }, [search]);
+  }, [search, refinement, timeFrame]);
+
+  const bySearch = <T extends { name: string; cards: string; itemId: string }>(
+    i: T,
+  ) => {
+    if (!search) return true;
+
+    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()} ${i.itemId.toLocaleLowerCase()}`;
+
+    const searchWords = search.toLocaleLowerCase().split(' ');
+
+    for (const word of searchWords) {
+      if (!names.includes(word)) return false;
+    }
+
+    return true;
+  };
+
+  const byRefinement = <T extends { refinement: string }>(i: T) =>
+    refinement ? i.refinement === refinement : true;
+
+  const byColumn = (i: any) => {
+    const v = get(i, sorting);
+    const numericValue = Number(v);
+
+    return isNaN(numericValue) ? v : numericValue;
+  };
+
+  const filteredData = orderBy(
+    data?.items.filter(bySearch).filter(byRefinement),
+    byColumn,
+    sortingOrder,
+  );
+  const paginatedData = chunk(filteredData, 15);
+  const paginatedIndexes = useMemo(() => {
+    let indexes = new Set<number>();
+    // add first index
+    indexes.add(0);
+
+    const arbitraryNumber = 6;
+    const arr = Array(arbitraryNumber)
+      .fill(0)
+      .map((_: any, i) => pagination + i - arbitraryNumber / 3);
+
+    arr
+      .filter(n => n > 0 && n < paginatedData.length - 1)
+      .forEach(n => indexes.add(n));
+
+    // add last index
+    if (paginatedData.length) indexes.add(paginatedData.length - 1);
+
+    return Array.from(indexes);
+  }, [pagination, paginatedData]);
+
+  const columns = genColumns(timeFrame);
 
   const noDataRow = (
     <tr>
@@ -190,47 +263,6 @@ export default function Page() {
     </tr>
   );
 
-  const bySearch = <T extends { name: string; cards: string; itemId: string }>(
-    i: T,
-  ) => {
-    if (!search) return true;
-
-    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()} ${i.itemId.toLocaleLowerCase()}`;
-
-    const searchWords = search.toLocaleLowerCase().split(' ');
-
-    for (const word of searchWords) {
-      if (!names.includes(word)) return false;
-    }
-
-    return true;
-  };
-
-  const byRefinement = <T extends { refinement: string }>(i: T) =>
-    refinement ? i.refinement === refinement : true;
-
-  const filteredData = data?.items.filter(bySearch).filter(byRefinement);
-  const paginatedData = chunk(filteredData, 15);
-  const paginatedIndexes = useMemo(() => {
-    let indexes = new Set<number>();
-    // add first index
-    indexes.add(0);
-
-    const arbitraryNumber = 6;
-    const arr = Array(arbitraryNumber)
-      .fill(0)
-      .map((_: any, i) => pagination + i - arbitraryNumber / 3);
-
-    arr
-      .filter(n => n > 0 && n < paginatedData.length - 1)
-      .forEach(n => indexes.add(n));
-
-    // add last index
-    indexes.add(paginatedData.length - 1);
-
-    return Array.from(indexes);
-  }, [pagination, paginatedData]);
-
   return (
     <div className="w-full h-screen bg-gray-200 text-black">
       {/* container */}
@@ -254,7 +286,7 @@ export default function Page() {
         </div>
 
         {/* main content: table */}
-        <main className="mx-32 flex flex-col gap-5 justify-center">
+        <main className="container mx-auto flex flex-col gap-5 justify-center">
           <div className="flex flex-row gap-5">
             <div className="bg-white p-2 max-w-md rounded">
               <input
@@ -300,15 +332,30 @@ export default function Page() {
           </div>
 
           <div className="bg-white p-2 rounded flex flex-col gap-2">
-            <table className="min-w-full text-sm font-light text-center rounded border border-gray-300 border-spacing-8">
+            <table className="text-sm font-light text-center rounded border border-gray-300 border-spacing-8">
               <thead className="font-medium bg-gray-200">
                 {columns.map((column, i) => (
                   <th
                     key={`${column.title}-${i}`}
                     scope="col"
-                    className={`p-2 ${
-                      column.tooltip ? 'decoration-dotted' : ''
-                    }`}
+                    className={`p-2 hover${
+                      column.tooltip ? ' decoration-dotted' : ''
+                    }${
+                      column.field === sorting
+                        ? ` active-sorting-${sortingOrder}`
+                        : ''
+                    }${column.width ? ` w-${column.width}` : ''}`}
+                    onClick={() => {
+                      if (!column.field) return;
+
+                      if (column.field === sorting) {
+                        setSortingOrder(
+                          sortingOrder === 'asc' ? 'desc' : 'asc',
+                        );
+                        return;
+                      }
+                      setSorting(column.field);
+                    }}
                   >
                     {column.tooltip ? (
                       <span title={column.tooltip}>{column.title}</span>
