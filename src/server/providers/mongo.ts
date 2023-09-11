@@ -1,6 +1,6 @@
 import type { Db as Database, Filter, IntegerType } from 'mongodb';
 import { HistoryItems } from './payonPC';
-import { Item } from '../resolvers/inputs';
+import { ItemHistory } from '../resolvers/inputs';
 
 const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
 const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
@@ -107,7 +107,7 @@ export class MongoRepository {
 
   async saveProcessedItems(
     items: Pick<
-      Item,
+      ItemHistory,
       | 'itemId'
       | 'modifiedAt'
       | 'name'
@@ -124,6 +124,13 @@ export class MongoRepository {
   async getProcessedItems() {
     const collection = this.getProcessedItemsCollection();
     return await collection.find().toArray();
+  }
+
+  async getProcessedItem(itemId: string) {
+    const collection = this.getProcessedItemsCollection();
+    return await collection.findOne({
+      itemId,
+    });
   }
 
   /* list of item ids methods */
@@ -210,7 +217,7 @@ export class MongoRepository {
   private getProcessedItemsCollection() {
     return this.database.collection<
       Pick<
-        Item,
+        ItemHistory,
         | 'itemId'
         | 'modifiedAt'
         | 'name'

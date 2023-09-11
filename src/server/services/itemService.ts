@@ -10,7 +10,7 @@ import { subDays } from 'date-fns';
 import { coveredItemIds, itemNames } from '@/server/constants';
 import { sleep, rebuildName, joinCards } from '@/server/utils';
 import { Inject, Service } from 'typedi';
-import { Item } from '../resolvers/inputs';
+import { ItemHistory } from '../resolvers/inputs';
 import { omit, zip, zipWith, groupBy, entries, pick } from 'lodash';
 
 const TIMEOUT = 300;
@@ -62,9 +62,10 @@ export class ItemService {
 
       if (item.vendHistory?.length || item.sellHistory?.length) {
         // ...and save if it has history
+
         await this.mongoRepository.saveRawItem({
           itemId: String(itemId),
-          itemName: itemNames[itemIdNumber as keyof typeof itemNames],
+          itemName: this.getItemName(itemId)!,
           modifiedAt: currentDate,
           rawData: {
             vendHist: item.vendHistory || [],
@@ -149,17 +150,11 @@ export class ItemService {
   }
 
   async getItems() {
-    // const rawItems = await this.mongoRepository.getAllRawItems();
-
-    // return rawItems.map(this.toDTO).flat();
-
     return this.mongoRepository.getProcessedItems();
   }
 
   async getFullItem(itemId: string) {
-    const result = (await this.mongoRepository.getRawItemByItemId(itemId))!;
-
-    return this.toDTO(result);
+    return this.mongoRepository.getProcessedItem(itemId);
   }
 
   async getOneItemFromPayon(itemId: string) {
@@ -190,11 +185,20 @@ export class ItemService {
           // some old records doesn't contain refinement info
           const i = _i || { r: 0 };
 
+          // some cards are not cards, they are enchants, or in the case of
+          // pets, they are loyalty (crazy right?)
+          const everyCardIsCard = Object.values(omit(i, 'r')).every(cardId => {
+            const cardName = this.getItemName(cardId.toString());
+            if (cardName && cardName.toLocaleLowerCase().includes('card'))
+              return true;
+            return false;
+          });
+
           return {
             date: new Date(a),
             price: b,
             refinement: `${i.r}`,
-            cards: joinCards(omit(i, 'r')),
+            cards: everyCardIsCard ? joinCards(omit(i, 'r')) : '',
           };
         },
       );
@@ -239,8 +243,20 @@ export class ItemService {
       };
 
       return acc;
-    }, {} as Record<string, Pick<Item, 'itemId' | 'name' | 'modifiedAt' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'>>);
+    }, {} as Record<string, Pick<ItemHistory, 'itemId' | 'name' | 'modifiedAt' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'>>);
 
     return Object.values(itemsArray);
+  }
+
+  private getItemName(itemId: string): string | null {
+    const itemIdNumber = Number(itemId);
+
+    if (isNaN(itemIdNumber)) return null;
+    if (itemIdNumber < 0) return null;
+
+    const name = itemNames[Number(itemId) as keyof typeof itemNames].trim();
+    if (!name.length) return null;
+
+    return name;
   }
 }

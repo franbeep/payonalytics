@@ -3,7 +3,7 @@ import { Field, ID, ObjectType } from 'type-graphql';
 export type FixDecorator<T> = T;
 
 @ObjectType()
-export class Item {
+export class ItemHistory {
   @Field()
   itemId!: string;
 

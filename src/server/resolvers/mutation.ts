@@ -9,9 +9,9 @@ import {
 } from 'type-graphql';
 import { ItemService } from '../services/itemService';
 import { Inject, Service } from 'typedi';
-import { Item } from './inputs';
+import { ItemHistory } from './inputs';
 
-@Resolver(Item)
+@Resolver(ItemHistory)
 @Service()
 export class ItemMutationResolver {
   @Inject() private itemService!: ItemService;
