@@ -39,7 +39,8 @@ type GetItemHistoryResponse = {
   lastUpdated: number; // number date
 };
 type GetItemHistoryDetails = {
-  data: Array<{
+  error: string;
+  data?: Array<{
     id: number;
     time: string;
     shop_name: string;
@@ -54,6 +55,7 @@ type GetItemHistoryDetails = {
     x: number;
     y: number;
   }>;
+  lastUpdated: number; // number date
 };
 
 export class PayonPC {
@@ -81,26 +83,29 @@ export class PayonPC {
 
       return data;
     } catch (error) {
-      // id doesn´t not exist
-      // TODO
       return {
-        error: 'request failed',
+        error: 'no data',
         lastUpdated: 0,
       };
     }
   }
 
-  async getItemHistoryDetails(
-    id: string,
-  ): Promise<GetItemHistoryDetails['data']> {
-    const { data } = await axios.get<GetItemHistoryDetails>(
-      `${process.env.PAYON_STORIES_ENDPOINT}/vend_details${buildParams({
-        id,
-      })}`,
-    );
+  async getItemHistoryDetails(id: string): Promise<GetItemHistoryDetails> {
+    try {
+      const { data } = await axios.get<GetItemHistoryDetails>(
+        `${process.env.PAYON_STORIES_ENDPOINT}/vend_details${buildParams({
+          id,
+        })}`,
+      );
 
-    if (!data) throw Error('getItemHistoryDetails failed');
+      if (data.error) throw Error(`getItemHistoryDetails failed ${data.error}`);
 
-    return data.data;
+      return data;
+    } catch (error) {
+      return {
+        error: 'no data',
+        lastUpdated: 0,
+      };
+    }
   }
 }

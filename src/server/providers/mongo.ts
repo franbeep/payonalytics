@@ -223,9 +223,8 @@ export class MongoRepository {
   }
 
   private getVendingItemsCollection() {
-    // VENDING_ITEMS_COLLECTION_NAME
     return this.database.collection<VendingItemsMongoData>(
-      LIST_OF_ITEM_IDS_COLLECTION_NAME,
+      VENDING_ITEMS_COLLECTION_NAME,
     );
   }
 }

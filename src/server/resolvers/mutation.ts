@@ -43,4 +43,11 @@ export class ItemMutationResolver {
 
     return true;
   }
+
+  @Mutation(returns => Boolean)
+  async refreshVendingItems() {
+    await this.itemService.refreshVendingItems();
+
+    return true;
+  }
 }

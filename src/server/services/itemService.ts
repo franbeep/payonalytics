@@ -111,10 +111,12 @@ export class ItemService {
       );
 
       // get item history details
-      const item = await this.payonPC.getItemHistoryDetails(itemId);
+      const item = (await this.payonPC.getItemHistoryDetails(itemId)) || {};
 
-      const [firstRecord] = item;
-      if (!firstRecord) continue;
+      const { data } = item;
+
+      if (!data) continue;
+      const [firstRecord] = data;
 
       listOfVendingItemsById.push({
         itemId: firstRecord.id,
@@ -125,7 +127,7 @@ export class ItemService {
           c2: firstRecord.card2,
           c3: firstRecord.card3,
         }),
-        vendingData: item.map(i => ({
+        vendingData: data.map(i => ({
           listedDate: new Date(i.time),
           shopName: i.shop_name,
           amount: i.amount,

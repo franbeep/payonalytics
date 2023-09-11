@@ -43,11 +43,13 @@ type ResponseHistoryData = {
   }>;
 };
 
+type ResponseVendingData = {};
+
 type TimeFrame = 'last7days' | 'last30days' | 'allTime';
 
 const oswald = Oswald({ subsets: ['latin'] });
 
-const query = gql`
+const historyQuery = gql`
   query Items {
     items {
       cards
@@ -171,13 +173,13 @@ const genHistoryColumns = (
     render: item => item[timeFrame].qtyl,
   },
 ];
-// const vendingColumns: Array<TableColumnProps> = [];
+const vendingColumns: Array<ResponseVendingData> = [];
 
 export default function Page() {
   const [search, setSearch] = useState<string>();
   const [refinement, setRefinement] = useState<string>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('last30days');
-  const { data, error, loading } = useQuery<ResponseHistoryData>(query);
+  const { data, error, loading } = useQuery<ResponseHistoryData>(historyQuery);
 
   const bySearch = <T extends { name: string; cards: string; itemId: string }>(
     i: T,
@@ -207,7 +209,7 @@ export default function Page() {
         {/* apos image / title */}
         <LogoTitle />
 
-        {/* main content: table */}
+        {/* main content */}
         <main className="container mx-auto flex flex-col gap-5 justify-center">
           <div className="bg-white p-2 rounded flex flex-col gap-2">
             {/* search & filters */}
