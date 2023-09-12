@@ -21,7 +21,7 @@ export type ItemListMongoData = {
   itemIds: Array<number>;
 };
 export type VendingItemsMongoData = {
-  itemId: number;
+  itemId: number; // TODO: change this to tring
   refinement: string;
   cards: string;
   vendingData: Array<{

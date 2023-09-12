@@ -11,19 +11,26 @@ import {
 } from 'type-graphql';
 import { ItemService } from '../services/itemService';
 import { Inject, Service } from 'typedi';
-import { ItemHistory, ResolversPerDays } from './inputs';
+import { ItemHistory, ItemVending, ResolversPerDays } from './inputs';
 import { max, maxBy, min, minBy } from 'lodash';
 import { subDays, isAfter } from 'date-fns';
 import { itemNames } from '../constants';
 
 @Resolver(ItemHistory)
 @Service()
-export class ItemQueryResolver {
+export class ItemHistoryQueryResolver {
   @Inject() private itemService!: ItemService;
 
   @Query(returns => [ItemHistory])
-  async items() {
+  async itemsHistory() {
     return await this.itemService.getItems();
+  }
+
+  @Query(returns => [ItemHistory])
+  async itemHistory(@Arg('itemId') itemId: string) {
+    const item = await this.itemService.getFullItem(itemId);
+
+    return item;
   }
 
   @FieldResolver()
@@ -121,11 +128,15 @@ export class ItemQueryResolver {
   async mppi(@Root() item: ItemHistory) {
     return '';
   }
+}
 
-  @Query(returns => [ItemHistory])
-  async item(@Arg('itemId') itemId: string) {
-    const item = await this.itemService.getFullItem(itemId);
+@Resolver(ItemVending)
+@Service()
+export class ItemVendingQueryResolver {
+  @Inject() private itemService!: ItemService;
 
-    return item;
+  @Query(returns => [ItemVending])
+  async itemsVending() {
+    return await this.itemService.getCurrentVendingItems();
   }
 }

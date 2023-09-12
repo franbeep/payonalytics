@@ -2,7 +2,11 @@ import 'reflect-metadata';
 
 import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { ItemMutationResolver, ItemQueryResolver } from '@/server/resolvers';
+import {
+  ItemMutationResolver,
+  ItemHistoryQueryResolver,
+  ItemVendingQueryResolver,
+} from '@/server/resolvers';
 import { buildSchema } from 'type-graphql';
 import { Container } from 'typedi';
 import { MongoClient } from 'mongodb';
@@ -24,7 +28,11 @@ Container.set(MongoRepository, mongoRepo);
 
 const schema = await buildSchema({
   // Array of resolvers
-  resolvers: [ItemMutationResolver, ItemQueryResolver],
+  resolvers: [
+    ItemMutationResolver,
+    ItemHistoryQueryResolver,
+    ItemVendingQueryResolver,
+  ],
 
   // Registry 3rd party IOC container
   container: Container,

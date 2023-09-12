@@ -74,3 +74,48 @@ export class HistoryItemsObjectType {
   @Field()
   price!: number;
 }
+
+@ObjectType()
+export class ItemVending {
+  @Field()
+  itemId!: string;
+
+  @Field()
+  refinement!: string;
+
+  @Field()
+  cards!: string;
+
+  @Field(() => [VendingDataObject])
+  vendingData!: FixDecorator<VendingDataObject>[];
+}
+
+@ObjectType()
+export class VendingDataObject {
+  @Field()
+  listedDate!: string;
+
+  @Field()
+  shopName!: string;
+
+  @Field()
+  amount!: string;
+
+  @Field()
+  price!: string;
+
+  @Field(returns => CoordinatesObject)
+  coordinates!: FixDecorator<CoordinatesObject>;
+}
+
+@ObjectType()
+export class CoordinatesObject {
+  @Field()
+  map!: string;
+
+  @Field()
+  x!: number;
+
+  @Field()
+  y!: number;
+}

@@ -52,6 +52,16 @@ export class ItemService {
     const currentDate = new Date();
 
     let count = 1;
+    const processedItems: Pick<
+      ItemHistory,
+      | 'itemId'
+      | 'name'
+      | 'modifiedAt'
+      | 'refinement'
+      | 'cards'
+      | 'sellHist'
+      | 'vendHist'
+    >[] = [];
     for (const itemIdNumber of itemIds) {
       const itemId = String(itemIdNumber);
 
@@ -63,7 +73,7 @@ export class ItemService {
       if (item.vendHistory?.length || item.sellHistory?.length) {
         // ...and save if it has history
 
-        await this.mongoRepository.saveRawItem({
+        const result = this.flattenItem({
           itemId: String(itemId),
           itemName: this.getItemName(itemId)!,
           modifiedAt: currentDate,
@@ -72,10 +82,15 @@ export class ItemService {
             sellHist: item.sellHistory || [],
           },
         });
+        processedItems.push(...result);
       }
 
       await sleep(TIMEOUT);
     }
+
+    this.mongoRepository.saveProcessedItems(processedItems);
+
+    if (fullRefresh) this.refreshListOfItems();
 
     console.timeEnd(`[refreshHistory] Done!`);
   }
@@ -165,17 +180,20 @@ export class ItemService {
 
   async processItems() {
     const rawItems = await this.mongoRepository.getAllRawItems();
-
-    const processedItems = rawItems.map(this.toDTO).flat();
-
+    const processedItems = rawItems.map(this.flattenItem).flat();
     await this.mongoRepository.saveProcessedItems(processedItems);
   }
 
   async getCurrentVendingItems() {
-    //
+    return await this.mongoRepository.getVendingItems();
   }
 
-  private toDTO({ itemId, itemName, rawData, modifiedAt }: PayonMongoData) {
+  private flattenItem({
+    itemId,
+    itemName,
+    rawData,
+    modifiedAt,
+  }: PayonMongoData) {
     const histMapFn = <T extends HistoryItems[number]>(hist: T) =>
       zipWith(
         Array<string>(hist.y.length).fill(hist.x),
@@ -254,7 +272,8 @@ export class ItemService {
     if (isNaN(itemIdNumber)) return null;
     if (itemIdNumber < 0) return null;
 
-    const name = itemNames[Number(itemId) as keyof typeof itemNames].trim();
+    const name =
+      itemNames[Number(itemId) as keyof typeof itemNames]?.trim() || '';
     if (!name.length) return null;
 
     return name;
