@@ -300,7 +300,7 @@ export default function Page() {
     vendingData?.itemsVending.filter(bySearch).filter(byRefinement) || [];
 
   return (
-    <div className="w-full h-screen bg-gray-200 text-black">
+    <div className="w-full h-max min-h-screen bg-gray-200 text-black">
       {/* container */}
       <div className="mx-auto flex flex-col justify-center ">
         {/* apos image / title */}
