@@ -88,6 +88,35 @@ export class ItemVending {
 
   @Field(() => [VendingDataObject])
   vendingData!: FixDecorator<VendingDataObject>[];
+
+  /* field resolvers */
+
+  @Field()
+  iconURL!: string;
+
+  @Field()
+  name!: string;
+
+  @Field()
+  lp!: string;
+
+  @Field()
+  hp!: string;
+
+  @Field()
+  qty!: string;
+
+  @Field(returns => LocationObject)
+  minLocation!: FixDecorator<LocationObject>;
+}
+
+@ObjectType()
+export class LocationObject {
+  @Field()
+  location!: string;
+
+  @Field()
+  price!: string;
 }
 
 @ObjectType()

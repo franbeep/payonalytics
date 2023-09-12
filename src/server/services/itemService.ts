@@ -73,7 +73,7 @@ export class ItemService {
       if (item.vendHistory?.length || item.sellHistory?.length) {
         // ...and save if it has history
 
-        const result = this.flattenItem({
+        const result = this.flattenRawItem({
           itemId: String(itemId),
           itemName: this.getItemName(itemId)!,
           modifiedAt: currentDate,
@@ -127,34 +127,56 @@ export class ItemService {
       );
 
       // get item history details
-      const item = (await this.payonPC.getItemHistoryDetails(itemId)) || {};
+      const itemVendingDetails =
+        (await this.payonPC.getItemHistoryDetails(itemId)) || {};
 
-      const { data } = item;
+      const { data } = itemVendingDetails;
 
       if (!data) continue;
-      const [firstRecord] = data;
 
-      listOfVendingItemsById.push({
-        itemId: firstRecord.id,
-        refinement: `${firstRecord.refine}`,
+      // transform for better structure
+      const transformedData = data.map(item => ({
+        itemId: itemIdNumber,
+        refinement: `${item.refine}`,
         cards: joinCards({
-          c0: firstRecord.card0,
-          c1: firstRecord.card1,
-          c2: firstRecord.card2,
-          c3: firstRecord.card3,
+          c0: item.card0,
+          c1: item.card1,
+          c2: item.card2,
+          c3: item.card3,
         }),
-        vendingData: data.map(i => ({
-          listedDate: new Date(i.time),
-          shopName: i.shop_name,
-          amount: i.amount,
-          price: i.price,
-          coordinates: {
-            map: i.map,
-            x: i.x,
-            y: i.y,
-          },
-        })),
-      });
+        data: item,
+      }));
+
+      // group by ref and cards
+      const groupedData = groupBy(
+        transformedData,
+        item => `${item.cards}-${item.refinement}`,
+      );
+
+      listOfVendingItemsById.push(
+        ...Object.values(groupedData).map(item => {
+          const [{ itemId, refinement, cards }] = item;
+
+          const vendingDataArr = item.map(i => i.data);
+
+          return {
+            itemId,
+            refinement,
+            cards,
+            vendingData: vendingDataArr.map(i => ({
+              listedDate: new Date(i.time),
+              shopName: i.shop_name,
+              amount: i.amount,
+              price: i.price,
+              coordinates: {
+                map: i.map,
+                x: i.x,
+                y: i.y,
+              },
+            })),
+          };
+        }),
+      );
 
       await sleep(TIMEOUT);
     }
@@ -180,7 +202,7 @@ export class ItemService {
 
   async processItems() {
     const rawItems = await this.mongoRepository.getAllRawItems();
-    const processedItems = rawItems.map(this.flattenItem).flat();
+    const processedItems = rawItems.map(this.flattenRawItem).flat();
     await this.mongoRepository.saveProcessedItems(processedItems);
   }
 
@@ -188,7 +210,13 @@ export class ItemService {
     return await this.mongoRepository.getVendingItems();
   }
 
-  private flattenItem({
+  async getVendingItem(itemId: string) {
+    return await this.mongoRepository.getOneVendingItem(itemId);
+  }
+
+  // aux functions
+
+  private flattenRawItem({
     itemId,
     itemName,
     rawData,
@@ -266,7 +294,7 @@ export class ItemService {
     return Object.values(itemsArray);
   }
 
-  private getItemName(itemId: string): string | null {
+  getItemName(itemId: string): string | null {
     const itemIdNumber = Number(itemId);
 
     if (isNaN(itemIdNumber)) return null;

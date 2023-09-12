@@ -9,7 +9,7 @@ import { chunk } from 'lodash';
 import { Input, Select, Table, TableColumnProps } from '@/components';
 
 type ResponseHistoryData = {
-  items: Array<{
+  itemsHistory: Array<{
     iconURL: string;
     itemId: string;
     modifiedAt: string;
@@ -43,7 +43,33 @@ type ResponseHistoryData = {
   }>;
 };
 
-type ResponseVendingData = {};
+type ResponseVendingData = {
+  itemsVending: Array<{
+    itemId: string;
+    refinement: string;
+    cards: string;
+    iconURL: string;
+    name: string;
+    lp: string;
+    hp: string;
+    qty: string;
+    minLocation: {
+      location: string;
+      price: string;
+    };
+    vendingData: {
+      listedDate: Date;
+      shopName: string;
+      amount: string;
+      price: string;
+      coordinates: {
+        map: string;
+        x: number;
+        y: number;
+      };
+    };
+  }>;
+};
 
 type TimeFrame = 'last7days' | 'last30days' | 'allTime';
 
@@ -51,7 +77,7 @@ const oswald = Oswald({ subsets: ['latin'] });
 
 const historyQuery = gql`
   query Items {
-    items {
+    itemsHistory {
       cards
       iconURL
       itemId
@@ -85,6 +111,35 @@ const historyQuery = gql`
     }
   }
 `;
+const vendingQuery = gql`
+  query ItemsVending {
+    itemsVending {
+      itemId
+      refinement
+      cards
+      iconURL
+      name
+      lp
+      hp
+      qty
+      minLocation {
+        location
+        price
+      }
+      vendingData {
+        listedDate
+        shopName
+        amount
+        price
+        coordinates {
+          map
+          x
+          y
+        }
+      }
+    }
+  }
+`;
 
 const formatMoney = (str: string) => {
   if (str === '0') return '-';
@@ -99,7 +154,7 @@ const formatMoney = (str: string) => {
 
 const genHistoryColumns = (
   timeFrame: TimeFrame,
-): Array<TableColumnProps<ResponseHistoryData['items'][number]>> => [
+): Array<TableColumnProps<ResponseHistoryData['itemsHistory'][number]>> => [
   {
     title: '', // icon
     widthClass: 'w-8',
@@ -163,23 +218,82 @@ const genHistoryColumns = (
     widthClass: 'w-36',
     field: `${timeFrame}.qtys`,
     tooltip: 'Quantity Sold in the time frame',
-    render: item => item[timeFrame].qtys,
   },
   {
     title: 'QTYL',
     widthClass: 'w-36',
     field: `${timeFrame}.qtyl`,
     tooltip: 'Quantity Listed in the time frame',
-    render: item => item[timeFrame].qtyl,
   },
 ];
-const vendingColumns: Array<ResponseVendingData> = [];
+const vendingColumns: Array<
+  TableColumnProps<ResponseVendingData['itemsVending'][number]>
+> = [
+  {
+    title: '', // icon
+    widthClass: 'w-8',
+    extraClass: 'flex',
+    render: item => (
+      <img className="mx-auto py-2" src={item.iconURL} alt={item.name} />
+    ),
+  },
+  {
+    title: 'ID',
+    widthClass: 'w-14',
+    field: 'itemId',
+  },
+  {
+    title: 'Name',
+    widthClass: 'w-36',
+    field: 'name',
+  },
+  {
+    title: 'Ref.',
+    widthClass: 'w-16',
+    field: 'refinement',
+    tooltip: 'Refinement',
+    render: item => (item.refinement !== '0' ? `+${item.refinement}` : '-'),
+  },
+  {
+    title: 'Cards',
+    widthClass: 'w-1/3',
+    field: 'cards',
+  },
+  {
+    title: 'HP',
+    widthClass: 'w-36',
+    field: `hp`,
+    tooltip: 'Highest Price on sale',
+    render: item => formatMoney(item.hp) || '-',
+  },
+  {
+    title: 'LP',
+    widthClass: 'w-36',
+    field: `lp`,
+    tooltip: 'Lowest Price on sale',
+    render: item => formatMoney(item.lp) || '-',
+  },
+  {
+    title: 'QTY',
+    widthClass: 'w-36',
+    field: `qty`,
+    tooltip: 'Quantity on sale',
+  },
+  {
+    title: 'Location',
+    widthClass: 'w-60',
+    field: `minLocation.location`,
+  },
+];
 
 export default function Page() {
   const [search, setSearch] = useState<string>();
   const [refinement, setRefinement] = useState<string>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('last30days');
-  const { data, error, loading } = useQuery<ResponseHistoryData>(historyQuery);
+  const { data: historyData, loading: historyLoading } =
+    useQuery<ResponseHistoryData>(historyQuery);
+  const { data: vendingData, loading: vendingLoading } =
+    useQuery<ResponseVendingData>(vendingQuery);
 
   const bySearch = <T extends { name: string; cards: string; itemId: string }>(
     i: T,
@@ -200,7 +314,10 @@ export default function Page() {
   const byRefinement = <T extends { refinement: string }>(i: T) =>
     refinement ? i.refinement === refinement : true;
 
-  const filteredData = data?.items.filter(bySearch).filter(byRefinement) || [];
+  const filteredHistoryData =
+    historyData?.itemsHistory.filter(bySearch).filter(byRefinement) || [];
+  const filteredVendingData =
+    vendingData?.itemsVending.filter(bySearch).filter(byRefinement) || [];
 
   return (
     <div className="w-full h-screen bg-gray-200 text-black">
@@ -222,7 +339,12 @@ export default function Page() {
               <Select
                 value={refinement}
                 setValue={setRefinement}
-                options={['', ...Array(11).map((_, i) => i)]}
+                options={[
+                  '',
+                  ...Array(11)
+                    .fill('')
+                    .map((_, i) => i),
+                ]}
                 widthClass="w-14"
               />
               <Select
@@ -238,9 +360,14 @@ export default function Page() {
             </div>
 
             <Table
+              columns={vendingColumns}
+              data={filteredVendingData}
+              loading={vendingLoading}
+            />
+            <Table
               columns={genHistoryColumns(timeFrame)}
-              data={filteredData}
-              loading={loading}
+              data={filteredHistoryData}
+              loading={historyLoading}
             />
           </div>
         </main>

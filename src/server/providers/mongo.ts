@@ -190,6 +190,19 @@ export class MongoRepository {
     return result.map(item => item.first);
   }
 
+  async getOneVendingItem(itemId: string) {
+    const collection = this.getVendingItemsCollection();
+    const [result] = await collection
+      .find({
+        itemId: Number(itemId),
+      })
+      .sort('_id')
+      .limit(1)
+      .toArray();
+
+    return result;
+  }
+
   async insertVendingItems(vendingItems: Array<VendingItemsMongoData>) {
     const collection = this.getVendingItemsCollection();
     await collection.insertMany(vendingItems);

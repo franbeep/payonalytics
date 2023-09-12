@@ -12,7 +12,7 @@ import {
 import { ItemService } from '../services/itemService';
 import { Inject, Service } from 'typedi';
 import { ItemHistory, ItemVending, ResolversPerDays } from './inputs';
-import { max, maxBy, min, minBy } from 'lodash';
+import { max, maxBy, min, minBy, sum } from 'lodash';
 import { subDays, isAfter } from 'date-fns';
 import { itemNames } from '../constants';
 
@@ -138,5 +138,56 @@ export class ItemVendingQueryResolver {
   @Query(returns => [ItemVending])
   async itemsVending() {
     return await this.itemService.getCurrentVendingItems();
+  }
+
+  @Query(returns => ItemVending)
+  async itemVending(@Arg('itemId') itemId: string) {
+    return await this.itemService.getVendingItem(itemId);
+  }
+
+  @FieldResolver()
+  async name(@Root() { itemId }: ItemVending) {
+    return this.itemService.getItemName(itemId) || '';
+  }
+
+  @FieldResolver()
+  async iconURL(@Root() { itemId }: ItemVending) {
+    return `${process.env.ICON_URL_BASE_ENDPOINT!}/${itemId}.png`;
+  }
+
+  @FieldResolver()
+  async lp(@Root() { vendingData }: ItemVending) {
+    return min(vendingData.map(({ price }) => Number(price)))!.toString();
+  }
+
+  @FieldResolver()
+  async hp(@Root() { vendingData }: ItemVending) {
+    return max(vendingData.map(({ price }) => Number(price)))!.toString();
+  }
+
+  @FieldResolver()
+  async qty(@Root() { vendingData }: ItemVending) {
+    return sum(vendingData.map(({ amount }) => Number(amount)))!.toString();
+  }
+
+  @FieldResolver()
+  async minLocation(@Root() { vendingData }: ItemVending) {
+    const stallFound = vendingData.reduce(
+      (acc, curr) => {
+        const price = Number(curr.price);
+        if (price < acc.price) {
+          (acc.location = `${curr.coordinates.map}, ${curr.coordinates.x}, ${curr.coordinates.y}`),
+            (acc.price = price);
+        }
+
+        return acc;
+      },
+      {
+        location: '',
+        price: Infinity,
+      },
+    );
+
+    return stallFound;
   }
 }
