@@ -149,7 +149,7 @@ function TableHeaderItem<T>({
     }
 
     let cursorClass = '';
-    if (sortingClass) cursorClass = 'hover:cursor-pointer';
+    if (sorting) cursorClass = 'hover:cursor-pointer';
 
     const resultClass = [
       `p-2 hover`,

@@ -27,7 +27,7 @@ export class ItemHistoryQueryResolver {
   }
 
   @Query(returns => [ItemHistory])
-  async itemHistory(@Arg('itemId') itemId: string) {
+  async itemHistory(@Arg('itemId') itemId: number) {
     const item = await this.itemService.getFullItem(itemId);
 
     return item;
@@ -57,20 +57,20 @@ export class ItemHistoryQueryResolver {
     );
 
     return {
-      hps: maxBy(sellHist, i => i.price)?.price.toString() || '0',
-      lps: minBy(sellHist, i => i.price)?.price.toString() || '0',
+      hps: maxBy(sellHist, i => i.price)?.price || 0,
+      lps: minBy(sellHist, i => i.price)?.price || 0,
       avgl: vendHist.length
         ? Math.round(
             vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
-          ).toString()
-        : '0',
+          )
+        : 0,
       avgs: sellHist.length
         ? Math.round(
             sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
-          ).toString()
-        : '0',
-      qtyl: vendHist.length.toString(),
-      qtys: sellHist.length.toString(),
+          )
+        : 0,
+      qtyl: vendHist.length,
+      qtys: sellHist.length,
     } satisfies ResolversPerDays;
   }
 
@@ -85,20 +85,20 @@ export class ItemHistoryQueryResolver {
     );
 
     return {
-      hps: maxBy(sellHist, i => i.price)?.price.toString() || '0',
-      lps: minBy(sellHist, i => i.price)?.price.toString() || '0',
+      hps: maxBy(sellHist, i => i.price)?.price || 0,
+      lps: minBy(sellHist, i => i.price)?.price || 0,
       avgl: vendHist.length
         ? Math.round(
             vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
-          ).toString()
-        : '0',
+          )
+        : 0,
       avgs: sellHist.length
         ? Math.round(
             sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
-          ).toString()
-        : '0',
-      qtyl: vendHist.length.toString(),
-      qtys: sellHist.length.toString(),
+          )
+        : 0,
+      qtyl: vendHist.length,
+      qtys: sellHist.length,
     } satisfies ResolversPerDays;
   }
 
@@ -107,26 +107,21 @@ export class ItemHistoryQueryResolver {
     const { vendHist, sellHist } = item;
 
     return {
-      hps: maxBy(sellHist, i => i.price)?.price.toString() || '0',
-      lps: minBy(sellHist, i => i.price)?.price.toString() || '0',
+      hps: maxBy(sellHist, i => i.price)?.price || 0,
+      lps: minBy(sellHist, i => i.price)?.price || 0,
       avgl: vendHist.length
         ? Math.round(
             vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
-          ).toString()
-        : '0',
+          )
+        : 0,
       avgs: sellHist.length
         ? Math.round(
             sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
-          ).toString()
-        : '0',
-      qtyl: vendHist.length.toString(),
-      qtys: sellHist.length.toString(),
+          )
+        : 0,
+      qtyl: vendHist.length,
+      qtys: sellHist.length,
     } satisfies ResolversPerDays;
-  }
-
-  @FieldResolver()
-  async mppi(@Root() item: ItemHistory) {
-    return '';
   }
 }
 
@@ -140,8 +135,8 @@ export class ItemVendingQueryResolver {
     return await this.itemService.getCurrentVendingItems();
   }
 
-  @Query(returns => ItemVending)
-  async itemVending(@Arg('itemId') itemId: string) {
+  @Query(returns => [ItemVending])
+  async itemVending(@Arg('itemId') itemId: number) {
     return await this.itemService.getVendingItem(itemId);
   }
 

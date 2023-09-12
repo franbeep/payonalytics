@@ -1,10 +1,11 @@
 import {
   HistoryItems,
   MongoRepository,
-  PayonMongoData,
+  RawHistoryItemsMongoData,
   PayonPC,
   RagnApi,
   VendingItemsMongoData,
+  HistoryItemsMongoData,
 } from '../providers';
 import { subDays } from 'date-fns';
 import { coveredItemIds, itemNames } from '@/server/constants';
@@ -28,19 +29,10 @@ export class ItemService {
     private ragnApi: RagnApi,
   ) {}
 
+  /* cron refresh methods */
+
   async refreshHistory(fullRefresh = false) {
     console.time(`[refreshHistory] Done!`);
-
-    // delete old records
-    if (fullRefresh) {
-      console.log(`[refreshHistory] Deleting records...`);
-      await this.mongoRepository.deleteRawItems({
-        modifiedAt: { $lte: subDays(new Date(), 2) },
-      });
-      await this.mongoRepository.deleteListOfItems({
-        createdAt: { $lte: subDays(new Date(), 2) },
-      });
-    }
 
     // get list of item ids
     const itemIds = fullRefresh
@@ -48,35 +40,25 @@ export class ItemService {
       : (await this.mongoRepository.getListOfItems()).itemIds;
 
     // fetch new records
-    console.log(`[refreshHistory] Fetching new records...`);
+    console.info(`[refreshHistory] Fetching new records...`);
     const currentDate = new Date();
 
     let count = 1;
-    const processedItems: Pick<
-      ItemHistory,
-      | 'itemId'
-      | 'name'
-      | 'modifiedAt'
-      | 'refinement'
-      | 'cards'
-      | 'sellHist'
-      | 'vendHist'
-    >[] = [];
+    const processedItems: Omit<HistoryItemsMongoData, 'createdAt'>[] = [];
     for (const itemIdNumber of itemIds) {
       const itemId = String(itemIdNumber);
 
-      console.log(`[refreshHistory] ${itemId} [${count++}/${itemIds.length}]`);
+      console.info(`[refreshHistory] ${itemId} [${count++}/${itemIds.length}]`);
 
       // get item history
       const item = await this.payonPC.getItemHistory(itemId);
 
       if (item.vendHistory?.length || item.sellHistory?.length) {
-        // ...and save if it has history
-
+        // process item
         const result = this.flattenRawItem({
           itemId: String(itemId),
           itemName: this.getItemName(itemId)!,
-          modifiedAt: currentDate,
+          createdAt: currentDate,
           rawData: {
             vendHist: item.vendHistory || [],
             sellHist: item.sellHistory || [],
@@ -88,41 +70,49 @@ export class ItemService {
       await sleep(TIMEOUT);
     }
 
-    this.mongoRepository.saveProcessedItems(processedItems);
+    // save processed items
+    this.mongoRepository.insertProcessedItems(processedItems);
 
-    if (fullRefresh) this.refreshListOfItems();
+    // delete old records
+    if (fullRefresh) {
+      console.info(`[refreshHistory] Deleting records...`);
+      await this.mongoRepository.deleteOldListOfItems();
+      await this.refreshListOfItems();
+    }
 
     console.timeEnd(`[refreshHistory] Done!`);
   }
 
   async refreshListOfItems() {
-    const items = await this.mongoRepository.getAllRawItems();
+    const items = await this.mongoRepository.getProcessedItems();
 
-    const listOfItemIds = items.map(({ itemId }) => itemId);
+    const listOfItemIds = items.map(({ itemId }) => Number(itemId));
 
-    await this.mongoRepository.insertListOfItems(listOfItemIds.map(Number));
+    await this.mongoRepository.insertListOfItems(
+      Array.from(new Set(listOfItemIds)),
+    );
   }
 
   async refreshVendingItems() {
     console.time(`[refreshVendingItems] Done!`);
 
     // delete old records
-    console.log(`[refreshVendingItems] Deleting records...`);
-    await this.mongoRepository.deleteVendingItems({
-      modifiedAt: { $lte: subDays(new Date(), 2) },
-    });
+    console.info(`[refreshVendingItems] Deleting records...`);
+    await this.mongoRepository.deleteOldVendingItems();
 
     // get list of item ids
     const { itemIds } = await this.mongoRepository.getListOfItems();
 
     // fetch new records
     let count = 1;
-    const listOfVendingItemsById: Array<VendingItemsMongoData> = [];
-    console.log(`[refreshVendingItems] Fetching new records...`);
+    const listOfVendingItemsById: Array<
+      Omit<VendingItemsMongoData, 'createdAt'>
+    > = [];
+    console.info(`[refreshVendingItems] Fetching new records...`);
     for (const itemIdNumber of itemIds) {
       const itemId = String(itemIdNumber);
 
-      console.log(
+      console.info(
         `[refreshVendingItems] ${itemId} [${count++}/${itemIds.length}]`,
       );
 
@@ -136,14 +126,11 @@ export class ItemService {
 
       // transform for better structure
       const transformedData = data.map(item => ({
-        itemId: itemIdNumber,
+        itemId,
         refinement: `${item.refine}`,
-        cards: joinCards({
-          c0: item.card0,
-          c1: item.card1,
-          c2: item.card2,
-          c3: item.card3,
-        }),
+        cards: this.generateCardString(
+          pick(item, ['card0', 'card1', 'card2', 'card3']),
+        ),
         data: item,
       }));
 
@@ -160,8 +147,8 @@ export class ItemService {
           const vendingDataArr = item.map(i => i.data);
 
           return {
-            itemId,
-            refinement,
+            itemId: Number(itemId),
+            refinement: Number(refinement || 0),
             cards,
             vendingData: vendingDataArr.map(i => ({
               listedDate: new Date(i.time),
@@ -186,31 +173,30 @@ export class ItemService {
     console.timeEnd(`[refreshVendingItems] Done!`);
   }
 
+  /**
+   * @deprecated should not be used anymore
+   */
+  async processItems() {
+    const rawItems = await this.mongoRepository.getAllRawItems();
+    const processedItems = rawItems.map(this.flattenRawItem).flat();
+    await this.mongoRepository.insertProcessedItems(processedItems);
+  }
+
+  /* crud methods */
+
   async getItems() {
     return this.mongoRepository.getProcessedItems();
   }
 
-  async getFullItem(itemId: string) {
+  async getFullItem(itemId: number) {
     return this.mongoRepository.getProcessedItem(itemId);
-  }
-
-  async getOneItemFromPayon(itemId: string) {
-    const item = await this.payonPC.getItemHistory(String(itemId));
-
-    return item;
-  }
-
-  async processItems() {
-    const rawItems = await this.mongoRepository.getAllRawItems();
-    const processedItems = rawItems.map(this.flattenRawItem).flat();
-    await this.mongoRepository.saveProcessedItems(processedItems);
   }
 
   async getCurrentVendingItems() {
     return await this.mongoRepository.getVendingItems();
   }
 
-  async getVendingItem(itemId: string) {
+  async getVendingItem(itemId: number) {
     return await this.mongoRepository.getOneVendingItem(itemId);
   }
 
@@ -220,8 +206,7 @@ export class ItemService {
     itemId,
     itemName,
     rawData,
-    modifiedAt,
-  }: PayonMongoData) {
+  }: RawHistoryItemsMongoData) {
     const histMapFn = <T extends HistoryItems[number]>(hist: T) =>
       zipWith(
         Array<string>(hist.y.length).fill(hist.x),
@@ -231,20 +216,11 @@ export class ItemService {
           // some old records doesn't contain refinement info
           const i = _i || { r: 0 };
 
-          // some cards are not cards, they are enchants, or in the case of
-          // pets, they are loyalty (crazy right?)
-          const everyCardIsCard = Object.values(omit(i, 'r')).every(cardId => {
-            const cardName = this.getItemName(cardId.toString());
-            if (cardName && cardName.toLocaleLowerCase().includes('card'))
-              return true;
-            return false;
-          });
-
           return {
             date: new Date(a),
             price: b,
             refinement: `${i.r}`,
-            cards: everyCardIsCard ? joinCards(omit(i, 'r')) : '',
+            cards: this.generateCardString(omit(i, 'r')),
           };
         },
       );
@@ -279,22 +255,21 @@ export class ItemService {
       const vendHist = vendHistGroupedByRefCards[key] || [];
 
       acc[key] = {
-        itemId,
+        itemId: Number(itemId),
         name: itemName,
-        modifiedAt,
-        refinement,
+        refinement: Number(refinement || 0),
         cards,
         sellHist: sellHist.map(h => pick(h, ['date', 'price'])),
         vendHist: vendHist.map(h => pick(h, ['date', 'price'])),
       };
 
       return acc;
-    }, {} as Record<string, Pick<ItemHistory, 'itemId' | 'name' | 'modifiedAt' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'>>);
+    }, {} as Record<string, Omit<HistoryItemsMongoData, 'createdAt'>>);
 
     return Object.values(itemsArray);
   }
 
-  getItemName(itemId: string): string | null {
+  getItemName(itemId: string | number): string | null {
     const itemIdNumber = Number(itemId);
 
     if (isNaN(itemIdNumber)) return null;
@@ -305,5 +280,23 @@ export class ItemService {
     if (!name.length) return null;
 
     return name;
+  }
+
+  generateCardString(obj: Record<string, string | number>) {
+    const values = Object.values(obj);
+
+    if (!values.length) return '';
+
+    // some cards are not cards, they are enchants, or in the case of
+    // pets, they are loyalty
+    const everyCardIsCard = values.every(cardId => {
+      const cardName = this.getItemName(cardId.toString());
+      if (cardName && cardName.toLocaleLowerCase().includes('card'))
+        return true;
+      return false;
+    });
+
+    if (everyCardIsCard) return values.map(this.getItemName).join(', ');
+    return '';
   }
 }

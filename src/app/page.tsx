@@ -8,60 +8,48 @@ import { useState } from 'react';
 import { chunk } from 'lodash';
 import { Input, Select, Table, TableColumnProps } from '@/components';
 
+const DEFAULT_ZERO_VALUE = '-';
+
 type ResponseHistoryData = {
   itemsHistory: Array<{
     iconURL: string;
-    itemId: string;
-    modifiedAt: string;
+    itemId: number;
     name: string;
     cards: string;
-    refinement: string;
-    last7days: {
-      avgl: string;
-      avgs: string;
-      hps: string;
-      lps: string;
-      qtyl: string;
-      qtys: string;
-    };
-    last30days: {
-      avgl: string;
-      avgs: string;
-      hps: string;
-      lps: string;
-      qtyl: string;
-      qtys: string;
-    };
-    allTime: {
-      avgl: string;
-      avgs: string;
-      hps: string;
-      lps: string;
-      qtyl: string;
-      qtys: string;
-    };
+    refinement: number;
+    last7days: HistoryTimeFrame;
+    last30days: HistoryTimeFrame;
+    allTime: HistoryTimeFrame;
   }>;
+};
+type HistoryTimeFrame = {
+  avgl: number;
+  avgs: number;
+  hps: number;
+  lps: number;
+  qtyl: number;
+  qtys: number;
 };
 
 type ResponseVendingData = {
   itemsVending: Array<{
-    itemId: string;
-    refinement: string;
+    itemId: number;
+    refinement: number;
     cards: string;
     iconURL: string;
     name: string;
-    lp: string;
-    hp: string;
-    qty: string;
+    lp: number;
+    hp: number;
+    qty: number;
     minLocation: {
       location: string;
-      price: string;
+      price: number;
     };
     vendingData: {
       listedDate: Date;
       shopName: string;
-      amount: string;
-      price: string;
+      amount: number;
+      price: number;
       coordinates: {
         map: string;
         x: number;
@@ -81,7 +69,6 @@ const historyQuery = gql`
       cards
       iconURL
       itemId
-      modifiedAt
       name
       refinement
       last7days {
@@ -126,25 +113,14 @@ const vendingQuery = gql`
         location
         price
       }
-      vendingData {
-        listedDate
-        shopName
-        amount
-        price
-        coordinates {
-          map
-          x
-          y
-        }
-      }
     }
   }
 `;
 
-const formatMoney = (str: string) => {
-  if (str === '0') return '-';
+const formatMoney = (value: number) => {
+  if (value < 1) return DEFAULT_ZERO_VALUE;
 
-  const rev = Array.from(str).reverse();
+  const rev = Array.from(value.toString()).reverse();
 
   return `${chunk(rev, 3)
     .map(ea => ea.reverse().join(''))
@@ -178,7 +154,8 @@ const genHistoryColumns = (
     widthClass: 'w-16',
     field: 'refinement',
     tooltip: 'Refinement',
-    render: item => (item.refinement !== '0' ? `+${item.refinement}` : '-'),
+    render: item =>
+      item.refinement > 0 ? `+${item.refinement}` : DEFAULT_ZERO_VALUE,
   },
   {
     title: 'Cards',
@@ -190,28 +167,28 @@ const genHistoryColumns = (
     widthClass: 'w-36',
     field: `${timeFrame}.hps`,
     tooltip: 'Highest Price Sold in the time frame',
-    render: item => formatMoney(item[timeFrame].hps) || '-',
+    render: item => formatMoney(item[timeFrame].hps),
   },
   {
     title: 'LPS',
     widthClass: 'w-36',
     field: `${timeFrame}.lps`,
     tooltip: 'Lowest Price Sold in the time frame',
-    render: item => formatMoney(item[timeFrame].lps) || '-',
+    render: item => formatMoney(item[timeFrame].lps),
   },
   {
     title: 'AVGL',
     widthClass: 'w-36',
     field: `${timeFrame}.avgl`,
     tooltip: 'Average Listing Price in the time frame',
-    render: item => formatMoney(item[timeFrame].avgl) || '-',
+    render: item => formatMoney(item[timeFrame].avgl),
   },
   {
     title: 'AVGS',
     widthClass: 'w-36',
     field: `${timeFrame}.avgs`,
     tooltip: 'Average Sold Price in the time frame',
-    render: item => formatMoney(item[timeFrame].avgs) || '-',
+    render: item => formatMoney(item[timeFrame].avgs),
   },
   {
     title: 'QTYS',
@@ -252,7 +229,8 @@ const vendingColumns: Array<
     widthClass: 'w-16',
     field: 'refinement',
     tooltip: 'Refinement',
-    render: item => (item.refinement !== '0' ? `+${item.refinement}` : '-'),
+    render: item =>
+      item.refinement > 0 ? `+${item.refinement}` : DEFAULT_ZERO_VALUE,
   },
   {
     title: 'Cards',
@@ -264,14 +242,14 @@ const vendingColumns: Array<
     widthClass: 'w-36',
     field: `hp`,
     tooltip: 'Highest Price on sale',
-    render: item => formatMoney(item.hp) || '-',
+    render: item => formatMoney(item.hp),
   },
   {
     title: 'LP',
     widthClass: 'w-36',
     field: `lp`,
     tooltip: 'Lowest Price on sale',
-    render: item => formatMoney(item.lp) || '-',
+    render: item => formatMoney(item.lp),
   },
   {
     title: 'QTY',
@@ -288,19 +266,21 @@ const vendingColumns: Array<
 
 export default function Page() {
   const [search, setSearch] = useState<string>();
-  const [refinement, setRefinement] = useState<string>();
+  const [refinement, setRefinement] = useState<number>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('last30days');
   const { data: historyData, loading: historyLoading } =
     useQuery<ResponseHistoryData>(historyQuery);
   const { data: vendingData, loading: vendingLoading } =
     useQuery<ResponseVendingData>(vendingQuery);
 
-  const bySearch = <T extends { name: string; cards: string; itemId: string }>(
+  const bySearch = <T extends { name: string; cards: string; itemId: number }>(
     i: T,
   ) => {
     if (!search) return true;
 
-    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()} ${i.itemId.toLocaleLowerCase()}`;
+    const names = `${i.name.toLocaleLowerCase()} ${i.cards.toLocaleLowerCase()} ${i.itemId
+      .toString()
+      .toLocaleLowerCase()}`;
 
     const searchWords = search.toLocaleLowerCase().split(' ');
 
@@ -311,7 +291,7 @@ export default function Page() {
     return true;
   };
 
-  const byRefinement = <T extends { refinement: string }>(i: T) =>
+  const byRefinement = <T extends { refinement: number }>(i: T) =>
     refinement ? i.refinement === refinement : true;
 
   const filteredHistoryData =
@@ -338,7 +318,7 @@ export default function Page() {
               />
               <Select
                 value={refinement}
-                setValue={setRefinement}
+                setValue={(value: string) => setRefinement(Number(value))}
                 options={[
                   '',
                   ...Array(11)

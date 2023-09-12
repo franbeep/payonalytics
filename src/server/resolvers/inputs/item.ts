@@ -5,16 +5,13 @@ export type FixDecorator<T> = T;
 @ObjectType()
 export class ItemHistory {
   @Field()
-  itemId!: string;
+  itemId!: number;
 
   @Field()
   name!: string;
 
   @Field()
-  modifiedAt!: Date;
-
-  @Field()
-  refinement!: string;
+  refinement!: number;
 
   @Field()
   cards!: string;
@@ -38,32 +35,27 @@ export class ItemHistory {
 
   @Field(() => ResolversPerDays)
   allTime!: FixDecorator<ResolversPerDays>;
-
-  // misc
-
-  @Field()
-  mppi!: string;
 }
 
 @ObjectType()
 export class ResolversPerDays {
   @Field()
-  hps!: string;
+  hps!: number;
 
   @Field()
-  lps!: string;
+  lps!: number;
 
   @Field()
-  avgl!: string;
+  avgl!: number;
 
   @Field()
-  avgs!: string;
+  avgs!: number;
 
   @Field()
-  qtys!: string;
+  qtys!: number;
 
   @Field()
-  qtyl!: string;
+  qtyl!: number;
 }
 
 @ObjectType()
@@ -78,10 +70,10 @@ export class HistoryItemsObjectType {
 @ObjectType()
 export class ItemVending {
   @Field()
-  itemId!: string;
+  itemId!: number;
 
   @Field()
-  refinement!: string;
+  refinement!: number;
 
   @Field()
   cards!: string;
@@ -98,13 +90,13 @@ export class ItemVending {
   name!: string;
 
   @Field()
-  lp!: string;
+  lp!: number;
 
   @Field()
-  hp!: string;
+  hp!: number;
 
   @Field()
-  qty!: string;
+  qty!: number;
 
   @Field(returns => LocationObject)
   minLocation!: FixDecorator<LocationObject>;
@@ -116,22 +108,22 @@ export class LocationObject {
   location!: string;
 
   @Field()
-  price!: string;
+  price!: number;
 }
 
 @ObjectType()
 export class VendingDataObject {
   @Field()
-  listedDate!: string;
+  listedDate!: Date;
 
   @Field()
   shopName!: string;
 
   @Field()
-  amount!: string;
+  amount!: number;
 
   @Field()
-  price!: string;
+  price!: number;
 
   @Field(returns => CoordinatesObject)
   coordinates!: FixDecorator<CoordinatesObject>;

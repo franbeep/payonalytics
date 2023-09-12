@@ -1,16 +1,17 @@
 import type { Db as Database, Filter, IntegerType } from 'mongodb';
 import { HistoryItems } from './payonPC';
-import { ItemHistory } from '../resolvers/inputs';
+import { ItemHistory, ItemVending } from '../resolvers/inputs';
+import { subDays } from 'date-fns';
 
 const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
 const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
 const PROCESSED_ITEMS_COLLECTION_NAME = 'processeditems';
 const VENDING_ITEMS_COLLECTION_NAME = 'vendingitems';
 
-export type PayonMongoData = {
+export type RawHistoryItemsMongoData = {
   itemId: string;
   itemName: string;
-  modifiedAt: Date;
+  createdAt: Date;
   rawData: {
     vendHist: HistoryItems;
     sellHist: HistoryItems;
@@ -20,32 +21,24 @@ export type ItemListMongoData = {
   createdAt: Date;
   itemIds: Array<number>;
 };
-export type VendingItemsMongoData = {
-  itemId: number; // TODO: change this to tring
-  refinement: string;
-  cards: string;
-  vendingData: Array<{
-    listedDate: Date;
-    shopName: string;
-    amount: number;
-    price: number;
-    coordinates: {
-      map: string;
-      x: number;
-      y: number;
-    };
-  }>;
-};
+export type HistoryItemsMongoData = Pick<
+  ItemHistory,
+  'itemId' | 'name' | 'refinement' | 'cards' | 'sellHist' | 'vendHist'
+> & { createdAt?: Date };
+export type VendingItemsMongoData = Pick<
+  ItemVending,
+  'itemId' | 'refinement' | 'cards' | 'vendingData'
+> & { createdAt?: Date };
 
 export class MongoRepository {
   constructor(private database: Database) {}
 
-  /* payon stories methods */
+  /* payon stories methods: raw data */
 
   /**
    * @deprecated: opt to insert all data already processed
    */
-  async saveRawItem(data: PayonMongoData) {
+  async insertRawItem(data: RawHistoryItemsMongoData) {
     const collection = this.getPayonCollection();
     await collection.insertOne(data);
   }
@@ -53,11 +46,14 @@ export class MongoRepository {
   /**
    * @deprecated: opt to insert all data already processed
    */
-  async saveRawItems(items: Array<PayonMongoData>) {
+  async insertRawItems(items: Array<RawHistoryItemsMongoData>) {
     const collection = this.getPayonCollection();
     await collection.insertMany(items);
   }
 
+  /**
+   * @deprecated: opt to use already processed data
+   */
   async getRawItemByItemId(itemId: string) {
     const collection = this.getPayonCollection();
     const [first] = await collection
@@ -71,12 +67,15 @@ export class MongoRepository {
     return first;
   }
 
+  /**
+   * @deprecated: opt to use already processed data
+   */
   async getAllRawItems() {
     const collection = this.getPayonCollection();
     const result = await collection
       .aggregate<{
         _id: string;
-        first: PayonMongoData;
+        first: RawHistoryItemsMongoData;
       }>(
         [
           {
@@ -100,33 +99,60 @@ export class MongoRepository {
     return result.map(item => item.first);
   }
 
-  async deleteRawItems(filter: Filter<PayonMongoData>) {
+  /**
+   * @deprecated: opt to use already processed data
+   */
+  async deleteRawItems(filter: Filter<RawHistoryItemsMongoData>) {
     const collection = this.getPayonCollection();
     await collection.deleteMany(filter);
   }
 
-  async saveProcessedItems(
-    items: Pick<
-      ItemHistory,
-      | 'itemId'
-      | 'modifiedAt'
-      | 'name'
-      | 'refinement'
-      | 'cards'
-      | 'sellHist'
-      | 'vendHist'
-    >[],
+  /* payon stories methods: list of processed items */
+
+  async insertProcessedItems(
+    items: Omit<HistoryItemsMongoData, 'createdAt'>[],
   ) {
     const collection = this.getProcessedItemsCollection();
-    await collection.insertMany(items);
+    const today = new Date();
+    await collection.insertMany(
+      items.map(item => ({ ...item, createdAt: today })),
+    );
   }
 
   async getProcessedItems() {
     const collection = this.getProcessedItemsCollection();
-    return await collection.find().toArray();
+    const result = await collection
+      .aggregate<{
+        _id: string;
+        first: HistoryItemsMongoData;
+      }>(
+        [
+          {
+            $sort: {
+              _id: -1,
+            },
+          },
+          {
+            $group: {
+              _id: {
+                id: '$itemId',
+                ref: '$refinement',
+                cards: '$cards',
+              },
+              first: { $first: '$$ROOT' },
+            },
+          },
+        ],
+        {
+          allowDiskUse: true,
+        },
+      )
+      .toArray();
+
+    return result.map(r => r.first);
   }
 
-  async getProcessedItem(itemId: string) {
+  async getProcessedItem(itemId: number) {
     const collection = this.getProcessedItemsCollection();
     return await collection.findOne({
       itemId,
@@ -154,14 +180,16 @@ export class MongoRepository {
     });
   }
 
-  async deleteListOfItems(filter: Filter<ItemListMongoData>) {
+  async deleteOldListOfItems() {
     const collection = this.getListItemIdsCollection();
-    await collection.deleteMany(filter);
+    await collection.deleteMany({
+      createdAt: { $lte: subDays(new Date(), 2) },
+    });
   }
 
   /* vending items methods */
 
-  async getVendingItems() {
+  async getVendingItems(filter?: Filter<VendingItemsMongoData>) {
     const collection = this.getVendingItemsCollection();
     const result = await collection
       .aggregate<{
@@ -169,6 +197,15 @@ export class MongoRepository {
         first: VendingItemsMongoData;
       }>(
         [
+          ...(filter
+            ? [
+                {
+                  $match: {
+                    ...filter,
+                  },
+                },
+              ]
+            : []),
           {
             $sort: {
               _id: -1,
@@ -176,7 +213,11 @@ export class MongoRepository {
           },
           {
             $group: {
-              _id: '$itemId',
+              _id: {
+                id: '$itemId',
+                ref: '$refinement',
+                cards: '$cards',
+              },
               first: { $first: '$$ROOT' },
             },
           },
@@ -190,33 +231,35 @@ export class MongoRepository {
     return result.map(item => item.first);
   }
 
-  async getOneVendingItem(itemId: string) {
-    const collection = this.getVendingItemsCollection();
-    const [result] = await collection
-      .find({
-        itemId: Number(itemId),
-      })
-      .sort('_id')
-      .limit(1)
-      .toArray();
-
-    return result;
+  async getOneVendingItem(itemId: number) {
+    return await this.getVendingItems({
+      itemId,
+    });
   }
 
-  async insertVendingItems(vendingItems: Array<VendingItemsMongoData>) {
+  async insertVendingItems(
+    vendingItems: Array<Omit<VendingItemsMongoData, 'createdAt'>>,
+  ) {
     const collection = this.getVendingItemsCollection();
-    await collection.insertMany(vendingItems);
+    await collection.insertMany(
+      vendingItems.map(item => ({
+        ...item,
+        createdAt: new Date(),
+      })),
+    );
   }
 
-  async deleteVendingItems(filter: Filter<VendingItemsMongoData>) {
+  async deleteOldVendingItems() {
     const collection = this.getVendingItemsCollection();
-    await collection.deleteMany(filter);
+    await collection.deleteMany({
+      createdAt: { $lte: subDays(new Date(), 2) },
+    });
   }
 
   /* collection methods */
 
   private getPayonCollection() {
-    return this.database.collection<PayonMongoData>(
+    return this.database.collection<RawHistoryItemsMongoData>(
       PAYON_STORIES_COLLECTION_NAME,
     );
   }
@@ -228,18 +271,9 @@ export class MongoRepository {
   }
 
   private getProcessedItemsCollection() {
-    return this.database.collection<
-      Pick<
-        ItemHistory,
-        | 'itemId'
-        | 'modifiedAt'
-        | 'name'
-        | 'refinement'
-        | 'cards'
-        | 'sellHist'
-        | 'vendHist'
-      >
-    >(PROCESSED_ITEMS_COLLECTION_NAME);
+    return this.database.collection<HistoryItemsMongoData>(
+      PROCESSED_ITEMS_COLLECTION_NAME,
+    );
   }
 
   private getVendingItemsCollection() {
