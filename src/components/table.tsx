@@ -81,7 +81,7 @@ export function Table<T>({ columns, data, loading }: TableProps<T>) {
           {loading && <LoadingDiv size={columns.length} />}
 
           {/* no data row */}
-          {!paginatedData[pagination]?.length && (
+          {paginatedData[pagination] && !paginatedData[pagination].length && (
             <NoDataRow size={columns.length} />
           )}
 
@@ -89,7 +89,11 @@ export function Table<T>({ columns, data, loading }: TableProps<T>) {
           {paginatedData[pagination]?.map((item, index) => (
             <tr key={index} className="even:bg-gray-50 odd:bg-white text-xs">
               {Object.values(columns).map(columnData => (
-                <td colSpan={1} className={`pt-2 ${columnData.extraClass}`}>
+                <td
+                  key={columnData.field}
+                  colSpan={1}
+                  className={`pt-2 ${columnData.extraClass}`}
+                >
                   {columnData.render
                     ? columnData.render(item)
                     : get(item, columnData.field!)}
@@ -144,10 +148,14 @@ function TableHeaderItem<T>({
       else sortingClass = 'active-sorting-desc';
     }
 
+    let cursorClass = '';
+    if (sortingClass) cursorClass = 'hover:cursor-pointer';
+
     const resultClass = [
       `p-2 hover`,
       tooltipClass,
       sortingClass,
+      cursorClass,
       column.widthClass,
     ].join(' ');
 
@@ -185,7 +193,7 @@ const LoadingDiv = ({
 }) => (
   <tr>
     <td colSpan={size} className="pt-2 text-center">
-      <div role="status">
+      <div role="status" className="my-5">
         <svg
           aria-hidden="true"
           className="inline w-8 h-8 mr-2 text-gray-200 animate-spin dark:text-gray-100 fill-green-600"
@@ -216,7 +224,7 @@ const NoDataRow = ({
   text?: string;
 }) => (
   <tr>
-    <td colSpan={size} className="whitespace-nowrap px-6 py-4">
+    <td colSpan={size} className="whitespace-nowrap px-6 my-5">
       <div className="text-center">
         <span className="font-bold">{text}</span>
       </div>
