@@ -41,14 +41,6 @@ export class ItemHistoryQueryResolver {
     return `${process.env.ICON_URL_BASE_ENDPOINT!}/${itemId}.png`;
   }
 
-  @FieldResolver()
-  async cards(@Root() { cards }: ItemHistory) {
-    return cards
-      .split(',')
-      .map(card => itemNames[Number(card) as keyof typeof itemNames])
-      .join(', ');
-  }
-
   @FieldResolver(returns => ResolversPerDays)
   async last30days(@Root() item: ItemHistory) {
     const comparableDate = subDays(new Date(), 30);
