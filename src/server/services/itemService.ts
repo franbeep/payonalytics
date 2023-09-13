@@ -168,6 +168,8 @@ export class ItemService {
       await sleep(TIMEOUT);
     }
 
+    await this.mongoRepository.deleteOldProcessedItems();
+
     await this.mongoRepository.insertVendingItems(listOfVendingItemsById);
 
     console.timeEnd(`[refreshVendingItems] Done!`);
@@ -283,7 +285,7 @@ export class ItemService {
   }
 
   generateCardString(obj: Record<string, string | number>) {
-    const values = Object.values(obj);
+    const values = Object.values(obj).sort().filter(Boolean);
 
     if (!values.length) return '';
 

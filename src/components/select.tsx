@@ -23,9 +23,13 @@ export const Select: React.FC<SelectProps> = ({
         onChange={event => setValue(event.target.value)}
       >
         {Array.isArray(options)
-          ? Object.values(options).map(option => <option>{option}</option>)
-          : Object.entries(options).map(([label, value]) => (
-              <option value={value}>{label}</option>
+          ? Object.values(options).map((option, i) => (
+              <option key={i}>{option}</option>
+            ))
+          : Object.entries(options).map(([label, value], i) => (
+              <option value={value} key={i}>
+                {label}
+              </option>
             ))}
       </select>
     </div>

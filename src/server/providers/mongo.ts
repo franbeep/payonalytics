@@ -159,6 +159,13 @@ export class MongoRepository {
     });
   }
 
+  async deleteOldProcessedItems() {
+    const collection = this.getProcessedItemsCollection();
+    await collection.deleteMany({
+      createdAt: { $lte: subDays(new Date(), 2) },
+    });
+  }
+
   /* list of item ids methods */
 
   async getListOfItems() {
