@@ -186,7 +186,19 @@ export class ItemService {
 
   /* crud methods */
 
-  async getItems() {
+  async getItems(options?: { take?: number; offset?: number }) {
+    if (options && options.offset !== undefined && options.take !== undefined) {
+      const { take, offset } = options;
+      const { itemIds } = await this.mongoRepository.getListOfItems();
+      const filteredItemIds = itemIds.slice(offset, offset + take);
+
+      if (!filteredItemIds.length) return [];
+
+      return await this.mongoRepository.getProcessedItems({
+        itemId: { $in: filteredItemIds },
+      });
+    }
+
     return this.mongoRepository.getProcessedItems();
   }
 
@@ -194,7 +206,19 @@ export class ItemService {
     return this.mongoRepository.getProcessedItem(itemId);
   }
 
-  async getCurrentVendingItems() {
+  async getCurrentVendingItems(options?: { take?: number; offset?: number }) {
+    if (options && options.offset !== undefined && options.take !== undefined) {
+      const { take, offset } = options;
+      const { itemIds } = await this.mongoRepository.getListOfItems();
+      const filteredItemIds = itemIds.slice(offset, offset + take);
+
+      if (!filteredItemIds.length) return [];
+
+      return await this.mongoRepository.getVendingItems({
+        itemId: { $in: filteredItemIds },
+      });
+    }
+
     return await this.mongoRepository.getVendingItems();
   }
 
@@ -203,6 +227,15 @@ export class ItemService {
   }
 
   // aux functions
+
+  async hasMoreIds({ take, offset }: { take?: number; offset?: number }) {
+    if (take === undefined || offset === undefined) return false;
+
+    const { itemIds } = await this.mongoRepository.getListOfItems();
+    const filteredItemIds = itemIds.slice(offset, offset + take);
+    if (filteredItemIds.length > 0) return true;
+    return false;
+  }
 
   private flattenRawItem({
     itemId,

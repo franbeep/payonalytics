@@ -6,6 +6,7 @@ import {
   ItemMutationResolver,
   ItemHistoryQueryResolver,
   ItemVendingQueryResolver,
+  ItemMiscQueryResolver,
 } from '@/server/resolvers';
 import { buildSchema } from 'type-graphql';
 import { Container } from 'typedi';
@@ -32,6 +33,7 @@ const schema = await buildSchema({
     ItemMutationResolver,
     ItemHistoryQueryResolver,
     ItemVendingQueryResolver,
+    ItemMiscQueryResolver,
   ],
 
   // Registry 3rd party IOC container

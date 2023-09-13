@@ -119,7 +119,7 @@ export class MongoRepository {
     );
   }
 
-  async getProcessedItems() {
+  async getProcessedItems(filter?: Filter<VendingItemsMongoData>) {
     const collection = this.getProcessedItemsCollection();
     const result = await collection
       .aggregate<{
@@ -127,6 +127,15 @@ export class MongoRepository {
         first: HistoryItemsMongoData;
       }>(
         [
+          ...(filter
+            ? [
+                {
+                  $match: {
+                    ...filter,
+                  },
+                },
+              ]
+            : []),
           {
             $sort: {
               _id: -1,

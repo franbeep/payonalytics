@@ -4,9 +4,10 @@ import { useQuery } from '@apollo/experimental-nextjs-app-support/ssr';
 import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { chunk } from 'lodash';
 import { Input, Select, Table, TableColumnProps } from '@/components';
+import { useBatchedQuery } from '@/components/hooks';
 
 const DEFAULT_ZERO_VALUE = '-';
 
@@ -21,6 +22,7 @@ type ResponseHistoryData = {
     last30days: HistoryTimeFrame;
     allTime: HistoryTimeFrame;
   }>;
+  hasMore: boolean;
 };
 type HistoryTimeFrame = {
   avgl: number;
@@ -57,6 +59,7 @@ type ResponseVendingData = {
       };
     };
   }>;
+  hasMore: boolean;
 };
 
 type TimeFrame = 'last7days' | 'last30days' | 'allTime';
@@ -64,8 +67,8 @@ type TimeFrame = 'last7days' | 'last30days' | 'allTime';
 const oswald = Oswald({ subsets: ['latin'] });
 
 const historyQuery = gql`
-  query Items {
-    itemsHistory {
+  query ItemsHistory($offset: Float, $take: Float) {
+    itemsHistory(offset: $offset, take: $take) {
       cards
       iconURL
       itemId
@@ -96,11 +99,12 @@ const historyQuery = gql`
         qtys
       }
     }
+    hasMore(offset: $offset, take: $take)
   }
 `;
 const vendingQuery = gql`
-  query ItemsVending {
-    itemsVending {
+  query ItemsVending($offset: Float, $take: Float) {
+    itemsVending(offset: $offset, take: $take) {
       itemId
       refinement
       cards
@@ -114,6 +118,7 @@ const vendingQuery = gql`
         price
       }
     }
+    hasMore(offset: $offset, take: $take)
   }
 `;
 
@@ -268,10 +273,18 @@ export default function Page() {
   const [search, setSearch] = useState<string>();
   const [refinement, setRefinement] = useState<number>();
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('last30days');
-  const { data: historyData, loading: historyLoading } =
-    useQuery<ResponseHistoryData>(historyQuery);
-  const { data: vendingData, loading: vendingLoading } =
-    useQuery<ResponseVendingData>(vendingQuery);
+
+  // TODO: need to hugely improve this
+  const { data: historyData, loading: historyLoading } = useBatchedQuery<
+    ResponseHistoryData,
+    'itemsHistory',
+    ResponseHistoryData['itemsHistory'][number]
+  >(historyQuery, { iterableKey: 'itemsHistory' });
+  const { data: vendingData, loading: vendingLoading } = useBatchedQuery<
+    ResponseVendingData,
+    'itemsVending',
+    ResponseVendingData['itemsVending'][number]
+  >(vendingQuery, { iterableKey: 'itemsVending' });
 
   const bySearch = <T extends { name: string; cards: string; itemId: number }>(
     i: T,
@@ -295,9 +308,9 @@ export default function Page() {
     refinement ? i.refinement === refinement : true;
 
   const filteredHistoryData =
-    historyData?.itemsHistory.filter(bySearch).filter(byRefinement) || [];
+    historyData.filter(bySearch).filter(byRefinement) || [];
   const filteredVendingData =
-    vendingData?.itemsVending.filter(bySearch).filter(byRefinement) || [];
+    vendingData.filter(bySearch).filter(byRefinement) || [];
 
   return (
     <div className="w-full h-max min-h-screen bg-gray-200 text-black">

@@ -22,8 +22,11 @@ export class ItemHistoryQueryResolver {
   @Inject() private itemService!: ItemService;
 
   @Query(returns => [ItemHistory])
-  async itemsHistory() {
-    return await this.itemService.getItems();
+  async itemsHistory(
+    @Arg('take', { nullable: true }) take?: number,
+    @Arg('offset', { nullable: true }) offset?: number,
+  ) {
+    return await this.itemService.getItems({ take, offset });
   }
 
   @Query(returns => [ItemHistory])
@@ -131,8 +134,11 @@ export class ItemVendingQueryResolver {
   @Inject() private itemService!: ItemService;
 
   @Query(returns => [ItemVending])
-  async itemsVending() {
-    return await this.itemService.getCurrentVendingItems();
+  async itemsVending(
+    @Arg('take', { nullable: true }) take?: number,
+    @Arg('offset', { nullable: true }) offset?: number,
+  ) {
+    return await this.itemService.getCurrentVendingItems({ take, offset });
   }
 
   @Query(returns => [ItemVending])
@@ -184,5 +190,19 @@ export class ItemVendingQueryResolver {
     );
 
     return stallFound;
+  }
+}
+
+@Resolver()
+@Service()
+export class ItemMiscQueryResolver {
+  @Inject() private itemService!: ItemService;
+
+  @Query(returns => Boolean)
+  async hasMore(
+    @Arg('take', { nullable: true }) take?: number,
+    @Arg('offset', { nullable: true }) offset?: number,
+  ) {
+    return await this.itemService.hasMoreIds({ take, offset });
   }
 }
