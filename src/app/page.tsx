@@ -1,10 +1,9 @@
 'use client';
 
-import { useQuery } from '@apollo/experimental-nextjs-app-support/ssr';
 import gql from 'graphql-tag';
 import { Oswald } from 'next/font/google';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { chunk } from 'lodash';
 import { Input, Select, Table, TableColumnProps } from '@/components';
 import { useBatchedQuery } from '@/components/hooks';

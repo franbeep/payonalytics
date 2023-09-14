@@ -157,23 +157,17 @@ export class ItemVendingQueryResolver {
 
   @FieldResolver()
   async lp(@Root() { vendingData }: ItemVending) {
-    return (
-      min(vendingData.map(({ price }) => Number(price)))?.toString() || '0'
-    );
+    return min(vendingData.map(({ price }) => price)) || 0;
   }
 
   @FieldResolver()
   async hp(@Root() { vendingData }: ItemVending) {
-    return (
-      max(vendingData.map(({ price }) => Number(price)))?.toString() || '0'
-    );
+    return max(vendingData.map(({ price }) => price)) || 0;
   }
 
   @FieldResolver()
   async qty(@Root() { vendingData }: ItemVending) {
-    return (
-      sum(vendingData.map(({ amount }) => Number(amount)))?.toString() || '0'
-    );
+    return sum(vendingData.map(({ amount }) => amount)) || 0;
   }
 
   @FieldResolver()
