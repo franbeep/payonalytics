@@ -130,12 +130,19 @@ export class ItemVendingQueryResolver {
     @Arg('take', { nullable: true }) take?: number,
     @Arg('offset', { nullable: true }) offset?: number,
   ) {
-    return await this.itemService.getCurrentVendingItems({ take, offset });
+    const items = await this.itemService.getCurrentVendingItems({
+      take,
+      offset,
+    });
+
+    return items.filter(item => item.vendingData.length);
   }
 
   @Query(returns => [ItemVending])
   async itemVending(@Arg('itemId') itemId: number) {
-    return await this.itemService.getVendingItem(itemId);
+    const items = await this.itemService.getVendingItem(itemId);
+
+    return items.filter(item => item.vendingData.length);
   }
 
   @FieldResolver()
@@ -150,21 +157,33 @@ export class ItemVendingQueryResolver {
 
   @FieldResolver()
   async lp(@Root() { vendingData }: ItemVending) {
-    return min(vendingData.map(({ price }) => Number(price)))!.toString();
+    return (
+      min(vendingData.map(({ price }) => Number(price)))?.toString() || '0'
+    );
   }
 
   @FieldResolver()
   async hp(@Root() { vendingData }: ItemVending) {
-    return max(vendingData.map(({ price }) => Number(price)))!.toString();
+    return (
+      max(vendingData.map(({ price }) => Number(price)))?.toString() || '0'
+    );
   }
 
   @FieldResolver()
   async qty(@Root() { vendingData }: ItemVending) {
-    return sum(vendingData.map(({ amount }) => Number(amount)))!.toString();
+    return (
+      sum(vendingData.map(({ amount }) => Number(amount)))?.toString() || '0'
+    );
   }
 
   @FieldResolver()
   async minLocation(@Root() { vendingData }: ItemVending) {
+    if (!vendingData.length)
+      return {
+        location: '',
+        price: 0,
+      };
+
     const stallFound = vendingData.reduce(
       (acc, curr) => {
         const price = Number(curr.price);
