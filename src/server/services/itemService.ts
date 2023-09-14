@@ -24,20 +24,31 @@ export class ItemService {
 
     @Inject()
     private payonPC: PayonPC,
-
-    @Inject()
-    private ragnApi: RagnApi,
   ) {}
 
   /* cron refresh methods */
 
-  async refreshHistory(fullRefresh = false) {
+  async refreshHistory(
+    fullRefresh = false,
+    cronJobInfo?: { take: number; offset: number },
+  ) {
     console.time(`[refreshHistory] Done!`);
 
     // get list of item ids
-    const itemIds = fullRefresh
+    let itemIds = fullRefresh
       ? coveredItemIds
       : (await this.mongoRepository.getListOfItems()).itemIds;
+
+    // slice if cronjob
+    if (cronJobInfo) {
+      const { take, offset } = cronJobInfo;
+      itemIds = itemIds.slice(offset, offset + take);
+    }
+
+    if (!itemIds.length) {
+      console.timeEnd(`[refreshHistory] Done!`);
+      return;
+    }
 
     // fetch new records
     console.info(`[refreshHistory] Fetching new records...`);
@@ -67,7 +78,10 @@ export class ItemService {
         processedItems.push(...result);
       }
 
-      await sleep(TIMEOUT);
+      // cronjob needs to be fast, < 10s
+      if (!cronJobInfo) {
+        await sleep(TIMEOUT);
+      }
     }
 
     // save processed items
@@ -93,7 +107,7 @@ export class ItemService {
     );
   }
 
-  async refreshVendingItems() {
+  async refreshVendingItems(cronJobInfo?: { take: number; offset: number }) {
     console.time(`[refreshVendingItems] Done!`);
 
     // delete old records
@@ -101,7 +115,18 @@ export class ItemService {
     await this.mongoRepository.deleteOldVendingItems();
 
     // get list of item ids
-    const { itemIds } = await this.mongoRepository.getListOfItems();
+    let { itemIds } = await this.mongoRepository.getListOfItems();
+
+    // slice if cronjob
+    if (cronJobInfo) {
+      const { take, offset } = cronJobInfo;
+      itemIds = itemIds.slice(offset, offset + take);
+    }
+
+    if (!itemIds.length) {
+      console.timeEnd(`[refreshVendingItems] Done!`);
+      return;
+    }
 
     // fetch new records
     let count = 1;
@@ -165,7 +190,10 @@ export class ItemService {
         }),
       );
 
-      await sleep(TIMEOUT);
+      // cronjob needs to be fast, < 10s
+      if (!cronJobInfo) {
+        await sleep(TIMEOUT);
+      }
     }
 
     await this.mongoRepository.deleteOldProcessedItems();
