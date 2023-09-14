@@ -47,7 +47,7 @@ export class ItemService {
 
     if (!itemIds.length) {
       console.timeEnd(`[refreshHistory] Done!`);
-      return;
+      return 'nothing to be done';
     }
 
     // fetch new records
@@ -88,6 +88,9 @@ export class ItemService {
     this.mongoRepository.insertProcessedItems(processedItems);
 
     // delete old records
+    this.mongoRepository.deleteOldProcessedItems();
+
+    // refresh list of items if we're doing a full refresh
     if (fullRefresh) {
       console.info(`[refreshHistory] Deleting records...`);
       await this.mongoRepository.deleteOldListOfItems();
@@ -95,6 +98,7 @@ export class ItemService {
     }
 
     console.timeEnd(`[refreshHistory] Done!`);
+    return `Processed ${itemIds} ids`;
   }
 
   async refreshListOfItems() {
@@ -125,7 +129,7 @@ export class ItemService {
 
     if (!itemIds.length) {
       console.timeEnd(`[refreshVendingItems] Done!`);
-      return;
+      return 'nothing to be done';
     }
 
     // fetch new records
@@ -196,11 +200,12 @@ export class ItemService {
       }
     }
 
-    await this.mongoRepository.deleteOldProcessedItems();
+    await this.mongoRepository.deleteOldVendingItems();
 
     await this.mongoRepository.insertVendingItems(listOfVendingItemsById);
 
     console.timeEnd(`[refreshVendingItems] Done!`);
+    return `Processed ${itemIds} ids`;
   }
 
   /**

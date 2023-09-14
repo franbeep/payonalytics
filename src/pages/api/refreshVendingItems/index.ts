@@ -21,18 +21,18 @@ export default async function handler(
   const today = new Date();
   const offset = today.getMinutes() * DEFAULT_BATCH_SIZE;
 
+  let message: any = 'success';
   try {
-    await itemService.refreshVendingItems({
+    const result = await itemService.refreshVendingItems({
       take: DEFAULT_BATCH_SIZE,
       offset,
     });
+    if (result) message = result;
   } catch (err: any) {
-    response.status(200).json({
-      message: err.message,
-    });
+    message = err.message;
   }
 
   response.status(200).json({
-    message: 'success',
+    message,
   });
 }
