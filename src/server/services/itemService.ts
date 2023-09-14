@@ -7,7 +7,7 @@ import {
   VendingItemsMongoData,
   HistoryItemsMongoData,
 } from '../providers';
-import { subDays } from 'date-fns';
+import { subDays, isAfter } from 'date-fns';
 import { coveredItemIds, itemNames } from '@/server/constants';
 import { sleep, rebuildName, joinCards } from '@/server/utils';
 import { Inject, Service } from 'typedi';
@@ -169,17 +169,13 @@ export class ItemService {
         item => `${item.cards}-${item.refinement}`,
       );
 
+      const threeDaysAgo = subDays(new Date(), 3);
       listOfVendingItemsById.push(
         ...Object.values(groupedData).map(item => {
           const [{ itemId, refinement, cards }] = item;
 
-          const vendingDataArr = item.map(i => i.data);
-
-          return {
-            itemId: Number(itemId),
-            refinement: Number(refinement || 0),
-            cards,
-            vendingData: vendingDataArr.map(i => ({
+          const vendingData = item
+            .map(({ data: i }) => ({
               listedDate: new Date(i.time),
               shopName: i.shop_name,
               amount: i.amount,
@@ -189,7 +185,14 @@ export class ItemService {
                 x: i.x,
                 y: i.y,
               },
-            })),
+            }))
+            .filter(i => isAfter(i.listedDate, threeDaysAgo));
+
+          return {
+            itemId: Number(itemId),
+            refinement: Number(refinement || 0),
+            cards,
+            vendingData,
           };
         }),
       );
