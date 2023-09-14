@@ -19,9 +19,6 @@ import { MongoRepository, PayonPC, RagnApi } from '@/server/providers';
 const payonPC = new PayonPC();
 Container.set(PayonPC, payonPC);
 
-const ragnApi = new RagnApi();
-Container.set(RagnApi, new RagnApi());
-
 const connection = await MongoClient.connect(process.env.MONGO_URL!);
 
 const mongoRepo = new MongoRepository(connection.db('ragnanalytics'));
