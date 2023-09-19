@@ -1,6 +1,6 @@
 import { Arg, Ctx, FieldResolver, Query, Resolver, Root } from 'type-graphql';
 import { ItemService } from '../services/itemService';
-import { Inject, Service } from 'typedi';
+import Container, { Inject, Service } from 'typedi';
 import { ItemHistory, ItemVending, ResolversPerDays } from './inputs';
 import { max, maxBy, min, minBy, sum } from 'lodash';
 import { subDays, isAfter } from 'date-fns';
@@ -31,15 +31,15 @@ export class ItemHistoryQueryResolver {
   }
 
   @FieldResolver()
-  async iconURL(@Root() { itemId }: ItemHistory) {
+  iconURL(@Root() { itemId }: ItemHistory) {
     return `${process.env.ICON_URL_BASE_ENDPOINT!}/${itemId}.png`;
   }
 
   @FieldResolver(returns => ResolversPerDays)
-  async perDays(
+  perDays(
     // TODO: correctly type this
     @Arg('timeFrame', type => String)
-    timeFrame: HistoryTimeFrame,
+    timeFrame: string,
     @Root() item: ItemHistory,
   ) {
     let comparableDate: Date | null;
@@ -107,32 +107,32 @@ export class ItemVendingQueryResolver {
   }
 
   @FieldResolver()
-  async name(@Root() { itemId }: ItemVending) {
+  name(@Root() { itemId }: ItemVending) {
     return this.itemService.getItemName(itemId) || '';
   }
 
   @FieldResolver()
-  async iconURL(@Root() { itemId }: ItemVending) {
+  iconURL(@Root() { itemId }: ItemVending) {
     return `${process.env.ICON_URL_BASE_ENDPOINT!}/${itemId}.png`;
   }
 
   @FieldResolver()
-  async lp(@Root() { vendingData }: ItemVending) {
+  lp(@Root() { vendingData }: ItemVending) {
     return min(vendingData.map(({ price }) => price)) || 0;
   }
 
   @FieldResolver()
-  async hp(@Root() { vendingData }: ItemVending) {
+  hp(@Root() { vendingData }: ItemVending) {
     return max(vendingData.map(({ price }) => price)) || 0;
   }
 
   @FieldResolver()
-  async qty(@Root() { vendingData }: ItemVending) {
+  qty(@Root() { vendingData }: ItemVending) {
     return sum(vendingData.map(({ amount }) => amount)) || 0;
   }
 
   @FieldResolver()
-  async minLocation(@Root() { vendingData }: ItemVending) {
+  minLocation(@Root() { vendingData }: ItemVending) {
     if (!vendingData.length)
       return {
         location: '',
@@ -162,37 +162,54 @@ export class ItemVendingQueryResolver {
   }
 
   @FieldResolver(returns => Boolean)
-  async isMinOffer(
+  async isPrice(
+    // 'avgs' | 'lps'
+    @Arg('metric', type => String) metric: string,
     @Arg('timeFrame', type => String) timeFrame: HistoryTimeFrame,
-    @Root() { itemId, refinement, cards }: ItemVending,
+    @Root() itemVending: ItemVending,
     @Ctx('dataloader')
     dataloader: {
       processedItems: DataLoader<number, HistoryItemsMongoData[], number>;
       vendingItems: DataLoader<number, VendingItemsMongoData[], number>;
     },
   ) {
-    console.log(timeFrame);
-
-    return true;
-  }
-
-  @FieldResolver(returns => Boolean)
-  async processedItems(
-    @Root() { itemId, refinement, cards }: ItemVending,
-    @Ctx('dataloader')
-    dataloader: {
-      processedItems: DataLoader<number, HistoryItemsMongoData[], number>;
-      vendingItems: DataLoader<number, VendingItemsMongoData[], number>;
-    },
-  ) {
+    const { itemId, refinement, cards } = itemVending;
     const { processedItems: loader } = dataloader;
-
     const [item] = (await loader.load(itemId)).filter(
       i => i.refinement === refinement && i.cards === cards,
     );
+    const itemHistoryQueryResolver = Container.get(ItemHistoryQueryResolver);
 
-    return true;
+    if (!item) {
+      return true;
+    }
+    const perDays = itemHistoryQueryResolver.perDays(
+      timeFrame,
+      item as ItemHistory,
+    );
+
+    const lp = this.lp(itemVending);
+
+    return lp < perDays[metric as 'avgs' | 'lps'];
   }
+
+  // @FieldResolver(returns => Boolean)
+  // async processedItems(
+  //   @Root() { itemId, refinement, cards }: ItemVending,
+  //   @Ctx('dataloader')
+  //   dataloader: {
+  //     processedItems: DataLoader<number, HistoryItemsMongoData[], number>;
+  //     vendingItems: DataLoader<number, VendingItemsMongoData[], number>;
+  //   },
+  // ) {
+  //   const { processedItems: loader } = dataloader;
+
+  //   const [item] = (await loader.load(itemId)).filter(
+  //     i => i.refinement === refinement && i.cards === cards,
+  //   );
+
+  //   return true;
+  // }
 }
 
 @Resolver()

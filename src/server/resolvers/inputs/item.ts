@@ -96,10 +96,10 @@ export class ItemVending {
   minLocation!: FixDecorator<LocationObject>;
 
   @Field()
-  isMinOffer!: boolean;
+  isPrice!: boolean;
 
-  @Field()
-  processedItems!: boolean;
+  // @Field()
+  // processedItems!: boolean;
 }
 
 @ObjectType()

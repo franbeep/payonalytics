@@ -43,6 +43,7 @@ type ResponseVendingData = {
     hp: number;
     qty: number;
     minLocation: {
+      date: Date;
       location: string;
       price: number;
     };
@@ -57,6 +58,12 @@ type ResponseVendingData = {
         y: number;
       };
     };
+    lps_last30days: boolean;
+    avgs_last30days: boolean;
+    lps_last7days: boolean;
+    avgs_last7days: boolean;
+    lps_allTime: boolean;
+    avgs_allTime: boolean;
   }>;
   hasMore: boolean;
 };
@@ -73,7 +80,7 @@ const historyQuery = gql`
       itemId
       name
       refinement
-      last7days: perDays(timeFrame: last7days) {
+      last7days: perDays(timeFrame: "last7days") {
         avgl
         avgs
         hps
@@ -81,7 +88,7 @@ const historyQuery = gql`
         qtyl
         qtys
       }
-      last30days: perDays(timeFrame: last30days) {
+      last30days: perDays(timeFrame: "last30days") {
         avgl
         avgs
         hps
@@ -89,7 +96,7 @@ const historyQuery = gql`
         qtyl
         qtys
       }
-      allTime: perDays(timeFrame: allTime) {
+      allTime: perDays(timeFrame: "allTime") {
         avgl
         avgs
         hps
@@ -113,9 +120,16 @@ const vendingQuery = gql`
       hp
       qty
       minLocation {
+        date
         location
         price
       }
+      lps_last30days: isPrice(metric: "lps", timeFrame: "last30days")
+      avgs_last30days: isPrice(metric: "avgs", timeFrame: "last30days")
+      lps_last7days: isPrice(metric: "lps", timeFrame: "last7days")
+      avgs_last7days: isPrice(metric: "avgs", timeFrame: "last7days")
+      lps_allTime: isPrice(metric: "lps", timeFrame: "allTime")
+      avgs_allTime: isPrice(metric: "avgs", timeFrame: "allTime")
     }
     hasMore(offset: $offset, take: $take)
   }
@@ -207,9 +221,10 @@ const genHistoryColumns = (
     tooltip: 'Quantity Listed in the time frame',
   },
 ];
-const vendingColumns: Array<
-  TableColumnProps<ResponseVendingData['itemsVending'][number]>
-> = [
+
+const genVendingColumns = (
+  timeFrame: TimeFrame,
+): Array<TableColumnProps<ResponseVendingData['itemsVending'][number]>> => [
   {
     title: '', // icon
     widthClass: 'w-8',
@@ -238,7 +253,7 @@ const vendingColumns: Array<
   },
   {
     title: 'Cards',
-    widthClass: 'w-1/3',
+    widthClass: 'w-1/4',
     field: 'cards',
   },
   {
@@ -260,6 +275,27 @@ const vendingColumns: Array<
     widthClass: 'w-36',
     field: `qty`,
     tooltip: 'Quantity on sale',
+  },
+  {
+    title: 'IL',
+    widthClass: 'w-14',
+    field: `lps_${timeFrame}`,
+    tooltip: 'Is it Lowest on this time frame?',
+    render: item => (item[`lps_${timeFrame}`] ? '✓' : ''),
+  },
+  {
+    title: 'LA',
+    widthClass: 'w-14',
+    field: `avgs_${timeFrame}`,
+    tooltip: 'Lower than Average on this this time frame',
+    render: item => (item[`avgs_${timeFrame}`] ? '✓' : ''),
+  },
+  {
+    title: 'LD',
+    widthClass: 'w-60',
+    field: `minLocation.date`,
+    tooltip: 'Lowest sale Date last 3 days',
+    render: item => new Date(item.minLocation.date).toDateString(),
   },
   {
     title: 'Location',
@@ -352,7 +388,7 @@ export default function Page() {
             </div>
 
             <Table
-              columns={vendingColumns}
+              columns={genVendingColumns(timeFrame)}
               data={filteredVendingData}
               loading={vendingLoading}
             />
