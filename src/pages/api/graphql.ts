@@ -12,6 +12,7 @@ import { buildSchema } from 'type-graphql';
 import { Container } from 'typedi';
 import { MongoClient } from 'mongodb';
 import { MongoRepository, PayonPC, RagnApi } from '@/server/providers';
+import DataLoader from 'dataloader';
 
 /* Loaders */
 
@@ -42,4 +43,15 @@ const apolloServer = new ApolloServer({
   // formatError
 });
 
-export default startServerAndCreateNextHandler(apolloServer);
+export default startServerAndCreateNextHandler(apolloServer, {
+  context: async (req, res) => ({
+    dataloader: {
+      processedItems: new DataLoader(async (keys: readonly number[]) =>
+        mongoRepo.dataLoadProcessedItems(keys.map(Number)),
+      ),
+      vendingItems: new DataLoader(async (keys: readonly number[]) =>
+        mongoRepo.dataLoadVendingItems(keys.map(Number)),
+      ),
+    },
+  }),
+});

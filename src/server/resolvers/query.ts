@@ -1,20 +1,11 @@
-import {
-  Arg,
-  Args,
-  Authorized,
-  Ctx,
-  FieldResolver,
-  Mutation,
-  Query,
-  Resolver,
-  Root,
-} from 'type-graphql';
+import { Arg, Ctx, FieldResolver, Query, Resolver, Root } from 'type-graphql';
 import { ItemService } from '../services/itemService';
 import { Inject, Service } from 'typedi';
 import { ItemHistory, ItemVending, ResolversPerDays } from './inputs';
 import { max, maxBy, min, minBy, sum } from 'lodash';
 import { subDays, isAfter } from 'date-fns';
-import { itemNames } from '../constants';
+import DataLoader from 'dataloader';
+import { HistoryItemsMongoData, VendingItemsMongoData } from '../providers';
 
 @Resolver(ItemHistory)
 @Service()
@@ -180,21 +171,42 @@ export class ItemVendingQueryResolver {
 
     const stallFound = vendingData.reduce(
       (acc, curr) => {
+        curr.listedDate;
         const price = Number(curr.price);
         if (price < acc.price) {
-          (acc.location = `${curr.coordinates.map}, ${curr.coordinates.x}, ${curr.coordinates.y}`),
-            (acc.price = price);
+          acc.location = `${curr.coordinates.map}, ${curr.coordinates.x}, ${curr.coordinates.y}`;
+          acc.price = price;
+          acc.date = curr.listedDate;
         }
 
         return acc;
       },
       {
+        date: new Date(),
         location: '',
         price: Infinity,
       },
     );
 
     return stallFound;
+  }
+
+  @FieldResolver(returns => Boolean)
+  async processedItems(
+    @Root() { itemId, refinement, cards }: ItemVending,
+    @Ctx('dataloader')
+    dataloader: {
+      processedItems: DataLoader<number, HistoryItemsMongoData[], number>;
+      vendingItems: DataLoader<number, VendingItemsMongoData[], number>;
+    },
+  ) {
+    const { processedItems: loader } = dataloader;
+
+    const items = (await loader.load(itemId)).filter(
+      i => i.refinement === refinement && i.cards === cards,
+    );
+
+    return true;
   }
 }
 

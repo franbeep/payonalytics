@@ -1,7 +1,8 @@
-import type { Db as Database, Filter, IntegerType } from 'mongodb';
+import type { Db as Database, Filter } from 'mongodb';
 import { HistoryItems } from './payonPC';
 import { ItemHistory, ItemVending } from '../resolvers/inputs';
 import { subDays } from 'date-fns';
+import { groupBy, orderBy } from 'lodash';
 
 const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
 const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
@@ -161,6 +162,18 @@ export class MongoRepository {
     return result.map(r => r.first);
   }
 
+  async dataLoadProcessedItems(itemIds: number[]) {
+    const result = await this.getProcessedItems({
+      itemId: {
+        $in: itemIds,
+      },
+    });
+
+    const groupedByItemId = groupBy(result, 'itemId');
+
+    return itemIds.map(itemId => groupedByItemId[itemId] || []);
+  }
+
   async getProcessedItem(itemId: number) {
     const collection = this.getProcessedItemsCollection();
     return await collection.findOne({
@@ -245,6 +258,18 @@ export class MongoRepository {
       .toArray();
 
     return result.map(item => item.first);
+  }
+
+  async dataLoadVendingItems(itemIds: number[]) {
+    const result = await this.getVendingItems({
+      itemId: {
+        $in: itemIds,
+      },
+    });
+
+    const groupedByItemId = groupBy(result, 'itemId');
+
+    return itemIds.map(itemId => groupedByItemId[itemId] || []);
   }
 
   async getOneVendingItem(itemId: number) {

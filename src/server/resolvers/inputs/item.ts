@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType } from 'type-graphql';
+import { Field, ObjectType } from 'type-graphql';
 
 export type FixDecorator<T> = T;
 
@@ -100,6 +100,9 @@ export class ItemVending {
 
   @Field(returns => LocationObject)
   minLocation!: FixDecorator<LocationObject>;
+
+  @Field()
+  processedItems!: boolean;
 }
 
 @ObjectType()
@@ -109,6 +112,9 @@ export class LocationObject {
 
   @Field()
   price!: number;
+
+  @Field()
+  date!: Date;
 }
 
 @ObjectType()
