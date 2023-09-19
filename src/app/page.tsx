@@ -73,7 +73,7 @@ const historyQuery = gql`
       itemId
       name
       refinement
-      last7days {
+      last7days: perDays(timeFrame: last7days) {
         avgl
         avgs
         hps
@@ -81,7 +81,7 @@ const historyQuery = gql`
         qtyl
         qtys
       }
-      last30days {
+      last30days: perDays(timeFrame: last30days) {
         avgl
         avgs
         hps
@@ -89,7 +89,7 @@ const historyQuery = gql`
         qtyl
         qtys
       }
-      allTime {
+      allTime: perDays(timeFrame: allTime) {
         avgl
         avgs
         hps

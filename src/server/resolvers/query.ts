@@ -6,6 +6,9 @@ import { max, maxBy, min, minBy, sum } from 'lodash';
 import { subDays, isAfter } from 'date-fns';
 import DataLoader from 'dataloader';
 import { HistoryItemsMongoData, VendingItemsMongoData } from '../providers';
+import { IsEnum } from 'class-validator';
+
+type HistoryTimeFrame = 'last7days' | 'last30days' | 'allTime';
 
 @Resolver(ItemHistory)
 @Service()
@@ -33,64 +36,31 @@ export class ItemHistoryQueryResolver {
   }
 
   @FieldResolver(returns => ResolversPerDays)
-  async last30days(@Root() item: ItemHistory) {
-    const comparableDate = subDays(new Date(), 30);
-    const vendHist = item.vendHist.filter(item =>
-      isAfter(item.date, comparableDate),
-    );
-    const sellHist = item.sellHist.filter(item =>
-      isAfter(item.date, comparableDate),
-    );
+  async perDays(
+    // TODO: correctly type this
+    @Arg('timeFrame', type => String)
+    timeFrame: HistoryTimeFrame,
+    @Root() item: ItemHistory,
+  ) {
+    let comparableDate: Date | null;
+    switch (timeFrame) {
+      case 'last7days':
+        comparableDate = subDays(new Date(), 7);
+        break;
+      case 'last30days':
+        comparableDate = subDays(new Date(), 30);
+        break;
+      default:
+        comparableDate = null;
+        break;
+    }
 
-    return {
-      hps: maxBy(sellHist, i => i.price)?.price || 0,
-      lps: minBy(sellHist, i => i.price)?.price || 0,
-      avgl: vendHist.length
-        ? Math.round(
-            vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
-          )
-        : 0,
-      avgs: sellHist.length
-        ? Math.round(
-            sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
-          )
-        : 0,
-      qtyl: vendHist.length,
-      qtys: sellHist.length,
-    } satisfies ResolversPerDays;
-  }
-
-  @FieldResolver(returns => ResolversPerDays)
-  async last7days(@Root() item: ItemHistory) {
-    const comparableDate = subDays(new Date(), 7);
-    const vendHist = item.vendHist.filter(item =>
-      isAfter(item.date, comparableDate),
-    );
-    const sellHist = item.sellHist.filter(item =>
-      isAfter(item.date, comparableDate),
-    );
-
-    return {
-      hps: maxBy(sellHist, i => i.price)?.price || 0,
-      lps: minBy(sellHist, i => i.price)?.price || 0,
-      avgl: vendHist.length
-        ? Math.round(
-            vendHist.reduce((acc, i) => acc + i.price, 0) / vendHist.length,
-          )
-        : 0,
-      avgs: sellHist.length
-        ? Math.round(
-            sellHist.reduce((acc, i) => acc + i.price, 0) / sellHist.length,
-          )
-        : 0,
-      qtyl: vendHist.length,
-      qtys: sellHist.length,
-    } satisfies ResolversPerDays;
-  }
-
-  @FieldResolver(returns => ResolversPerDays)
-  async allTime(@Root() item: ItemHistory) {
-    const { vendHist, sellHist } = item;
+    const vendHist = comparableDate
+      ? item.vendHist.filter(item => isAfter(item.date, comparableDate!))
+      : item.vendHist;
+    const sellHist = comparableDate
+      ? item.sellHist.filter(item => isAfter(item.date, comparableDate!))
+      : item.sellHist;
 
     return {
       hps: maxBy(sellHist, i => i.price)?.price || 0,
@@ -192,6 +162,21 @@ export class ItemVendingQueryResolver {
   }
 
   @FieldResolver(returns => Boolean)
+  async isMinOffer(
+    @Arg('timeFrame', type => String) timeFrame: HistoryTimeFrame,
+    @Root() { itemId, refinement, cards }: ItemVending,
+    @Ctx('dataloader')
+    dataloader: {
+      processedItems: DataLoader<number, HistoryItemsMongoData[], number>;
+      vendingItems: DataLoader<number, VendingItemsMongoData[], number>;
+    },
+  ) {
+    console.log(timeFrame);
+
+    return true;
+  }
+
+  @FieldResolver(returns => Boolean)
   async processedItems(
     @Root() { itemId, refinement, cards }: ItemVending,
     @Ctx('dataloader')
@@ -202,7 +187,7 @@ export class ItemVendingQueryResolver {
   ) {
     const { processedItems: loader } = dataloader;
 
-    const items = (await loader.load(itemId)).filter(
+    const [item] = (await loader.load(itemId)).filter(
       i => i.refinement === refinement && i.cards === cards,
     );
 

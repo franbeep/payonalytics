@@ -28,13 +28,7 @@ export class ItemHistory {
   iconURL!: string;
 
   @Field(() => ResolversPerDays)
-  last30days!: FixDecorator<ResolversPerDays>;
-
-  @Field(() => ResolversPerDays)
-  last7days!: FixDecorator<ResolversPerDays>;
-
-  @Field(() => ResolversPerDays)
-  allTime!: FixDecorator<ResolversPerDays>;
+  perDays!: FixDecorator<ResolversPerDays>;
 }
 
 @ObjectType()
@@ -100,6 +94,9 @@ export class ItemVending {
 
   @Field(returns => LocationObject)
   minLocation!: FixDecorator<LocationObject>;
+
+  @Field()
+  isMinOffer!: boolean;
 
   @Field()
   processedItems!: boolean;
