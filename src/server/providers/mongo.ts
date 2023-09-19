@@ -1,8 +1,8 @@
 import type { Db as Database, Filter } from 'mongodb';
 import { HistoryItems } from './payonPC';
 import { ItemHistory, ItemVending } from '../resolvers/inputs';
-import { subDays } from 'date-fns';
-import { groupBy, orderBy } from 'lodash';
+import { subDays, subHours } from 'date-fns';
+import { groupBy } from 'lodash';
 
 const PAYON_STORIES_COLLECTION_NAME = 'payonstories';
 const LIST_OF_ITEM_IDS_COLLECTION_NAME = 'listofitemids';
@@ -293,7 +293,7 @@ export class MongoRepository {
   async deleteOldVendingItems() {
     const collection = this.getVendingItemsCollection();
     await collection.deleteMany({
-      createdAt: { $lte: subDays(new Date(), 2) },
+      createdAt: { $lte: subHours(new Date(), 5) },
     });
   }
 

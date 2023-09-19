@@ -88,12 +88,10 @@ export class ItemService {
     this.mongoRepository.insertProcessedItems(processedItems);
 
     // delete old records
-    this.mongoRepository.deleteOldProcessedItems();
+    await this.mongoRepository.deleteOldListOfItems();
 
     // refresh list of items if we're doing a full refresh
     if (fullRefresh) {
-      console.info(`[refreshHistory] Deleting records...`);
-      await this.mongoRepository.deleteOldListOfItems();
       await this.refreshListOfItems();
     }
 
