@@ -212,7 +212,7 @@ export class MongoRepository {
   async deleteOldListOfItems() {
     const collection = this.getListItemIdsCollection();
     await collection.deleteMany({
-      createdAt: { $lte: subDays(new Date(), 2) },
+      createdAt: { $lte: subDays(new Date(), 20) },
     });
   }
 

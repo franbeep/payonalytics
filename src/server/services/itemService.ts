@@ -88,7 +88,7 @@ export class ItemService {
     this.mongoRepository.insertProcessedItems(processedItems);
 
     // delete old records
-    await this.mongoRepository.deleteOldListOfItems();
+    await this.mongoRepository.deleteOldProcessedItems();
 
     // refresh list of items if we're doing a full refresh
     if (fullRefresh) {
@@ -107,6 +107,9 @@ export class ItemService {
     await this.mongoRepository.insertListOfItems(
       Array.from(new Set(listOfItemIds)),
     );
+
+    // delete old records
+    await this.mongoRepository.deleteOldListOfItems();
   }
 
   async refreshVendingItems(cronJobInfo?: { take: number; offset: number }) {
