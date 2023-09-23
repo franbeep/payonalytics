@@ -34,6 +34,9 @@ export class ItemService {
   ) {
     console.time(`[refreshHistory] Done!`);
 
+    // delete old records
+    await this.mongoRepository.deleteOldProcessedItems();
+
     // get list of item ids
     let itemIds = fullRefresh
       ? coveredItemIds
@@ -86,9 +89,6 @@ export class ItemService {
 
     // save processed items
     this.mongoRepository.insertProcessedItems(processedItems);
-
-    // delete old records
-    await this.mongoRepository.deleteOldProcessedItems();
 
     // refresh list of items if we're doing a full refresh
     if (fullRefresh) {

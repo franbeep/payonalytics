@@ -1,7 +1,12 @@
 import { Arg, Ctx, FieldResolver, Query, Resolver, Root } from 'type-graphql';
 import { ItemService } from '../services/itemService';
 import Container, { Inject, Service } from 'typedi';
-import { ItemHistory, ItemVending, ResolversPerDays } from './inputs';
+import {
+  ItemHistory,
+  ItemVending,
+  ResolversPerDays,
+  ResolversIsPrice,
+} from './inputs';
 import { max, maxBy, min, minBy, sum } from 'lodash';
 import { subDays, isAfter } from 'date-fns';
 import DataLoader from 'dataloader';
@@ -161,7 +166,7 @@ export class ItemVendingQueryResolver {
     return stallFound;
   }
 
-  @FieldResolver(returns => Boolean)
+  @FieldResolver(returns => ResolversIsPrice)
   async isPrice(
     // 'avgs' | 'lps'
     @Arg('metric', type => String) metric: string,
@@ -181,35 +186,36 @@ export class ItemVendingQueryResolver {
     const itemHistoryQueryResolver = Container.get(ItemHistoryQueryResolver);
 
     if (!item) {
-      return true;
+      return {
+        percentage: 0,
+        value: true,
+      };
     }
     const perDays = itemHistoryQueryResolver.perDays(
       timeFrame,
       item as ItemHistory,
     );
+    const referenceValue = perDays[metric as 'avgs' | 'lps'];
+
+    if (referenceValue === 0) {
+      return {
+        percentage: 0,
+        value: true,
+      };
+    }
 
     const lp = this.lp(itemVending);
 
-    return lp < perDays[metric as 'avgs' | 'lps'];
+    const percentage =
+      referenceValue > lp
+        ? 1 - Math.round((lp / referenceValue) * 100) / 100
+        : (1 - Math.round((referenceValue / lp) * 100) / 100) * -1;
+
+    return {
+      percentage,
+      value: lp < referenceValue,
+    };
   }
-
-  // @FieldResolver(returns => Boolean)
-  // async processedItems(
-  //   @Root() { itemId, refinement, cards }: ItemVending,
-  //   @Ctx('dataloader')
-  //   dataloader: {
-  //     processedItems: DataLoader<number, HistoryItemsMongoData[], number>;
-  //     vendingItems: DataLoader<number, VendingItemsMongoData[], number>;
-  //   },
-  // ) {
-  //   const { processedItems: loader } = dataloader;
-
-  //   const [item] = (await loader.load(itemId)).filter(
-  //     i => i.refinement === refinement && i.cards === cards,
-  //   );
-
-  //   return true;
-  // }
 }
 
 @Resolver()

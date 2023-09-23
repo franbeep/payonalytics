@@ -95,8 +95,8 @@ export class ItemVending {
   @Field(returns => LocationObject)
   minLocation!: FixDecorator<LocationObject>;
 
-  @Field()
-  isPrice!: boolean;
+  @Field(returns => ResolversIsPrice)
+  isPrice!: FixDecorator<ResolversIsPrice>;
 
   // @Field()
   // processedItems!: boolean;
@@ -142,4 +142,13 @@ export class CoordinatesObject {
 
   @Field()
   y!: number;
+}
+
+@ObjectType()
+export class ResolversIsPrice {
+  @Field()
+  percentage!: number;
+
+  @Field()
+  value!: boolean;
 }

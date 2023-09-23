@@ -58,14 +58,18 @@ type ResponseVendingData = {
         y: number;
       };
     };
-    lps_last30days: boolean;
-    avgs_last30days: boolean;
-    lps_last7days: boolean;
-    avgs_last7days: boolean;
-    lps_allTime: boolean;
-    avgs_allTime: boolean;
+    lps_last30days: IsPriceObject;
+    avgs_last30days: IsPriceObject;
+    lps_last7days: IsPriceObject;
+    avgs_last7days: IsPriceObject;
+    lps_allTime: IsPriceObject;
+    avgs_allTime: IsPriceObject;
   }>;
   hasMore: boolean;
+};
+type IsPriceObject = {
+  percentage: number;
+  value: boolean;
 };
 
 type TimeFrame = 'last7days' | 'last30days' | 'allTime';
@@ -124,12 +128,30 @@ const vendingQuery = gql`
         location
         price
       }
-      lps_last30days: isPrice(metric: "lps", timeFrame: "last30days")
-      avgs_last30days: isPrice(metric: "avgs", timeFrame: "last30days")
-      lps_last7days: isPrice(metric: "lps", timeFrame: "last7days")
-      avgs_last7days: isPrice(metric: "avgs", timeFrame: "last7days")
-      lps_allTime: isPrice(metric: "lps", timeFrame: "allTime")
-      avgs_allTime: isPrice(metric: "avgs", timeFrame: "allTime")
+      lps_last30days: isPrice(metric: "lps", timeFrame: "last30days") {
+        percentage
+        value
+      }
+      avgs_last30days: isPrice(metric: "avgs", timeFrame: "last30days") {
+        percentage
+        value
+      }
+      lps_last7days: isPrice(metric: "lps", timeFrame: "last7days") {
+        percentage
+        value
+      }
+      avgs_last7days: isPrice(metric: "avgs", timeFrame: "last7days") {
+        percentage
+        value
+      }
+      lps_allTime: isPrice(metric: "lps", timeFrame: "allTime") {
+        percentage
+        value
+      }
+      avgs_allTime: isPrice(metric: "avgs", timeFrame: "allTime") {
+        percentage
+        value
+      }
     }
     hasMore(offset: $offset, take: $take)
   }
@@ -279,16 +301,56 @@ const genVendingColumns = (
   {
     title: 'IL',
     widthClass: 'w-14',
-    field: `lps_${timeFrame}`,
+    field: `lps_${timeFrame}.value`,
     tooltip: 'Is it Lowest on this time frame?',
-    render: item => (item[`lps_${timeFrame}`] ? '✓' : ''),
+    render: item => (item[`lps_${timeFrame}`].value ? '✓' : ''), // “↑” “↓”
   },
   {
     title: 'LA',
     widthClass: 'w-14',
-    field: `avgs_${timeFrame}`,
+    field: `avgs_${timeFrame}.value`,
     tooltip: 'Lower than Average on this this time frame',
-    render: item => (item[`avgs_${timeFrame}`] ? '✓' : ''),
+    render: item => (item[`avgs_${timeFrame}`].value ? '✓' : ''),
+  },
+  {
+    title: 'HL',
+    widthClass: 'w-16',
+    field: `lps_${timeFrame}.percentage`,
+    tooltip: 'How lower it is (lowest)',
+    render: item => {
+      const { percentage } = item[`lps_${timeFrame}`];
+      const percentageString = `${Math.round(Math.abs(percentage) * 100)}%`;
+
+      if (percentage < 0) {
+        return <span className=" text-red-600">{`↑ ${percentageString}`}</span>;
+      }
+      if (percentage > 0) {
+        return (
+          <span className=" text-green-600">{`↓ ${percentageString}`}</span>
+        );
+      }
+      return '0%';
+    },
+  },
+  {
+    title: 'HA',
+    widthClass: 'w-16',
+    field: `avgs_${timeFrame}.percentage`,
+    tooltip: 'How lower it is (average)',
+    render: item => {
+      const { percentage } = item[`avgs_${timeFrame}`];
+      const percentageString = `${Math.round(Math.abs(percentage) * 100)}%`;
+
+      if (percentage < 0) {
+        return <span className=" text-red-600">{`↑ ${percentageString}`}</span>;
+      }
+      if (percentage > 0) {
+        return (
+          <span className=" text-green-600">{`↓ ${percentageString}`}</span>
+        );
+      }
+      return '0%';
+    },
   },
   {
     title: 'LD',
