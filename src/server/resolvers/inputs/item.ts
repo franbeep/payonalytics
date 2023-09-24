@@ -87,6 +87,9 @@ export class ItemVending {
   lp!: number;
 
   @Field()
+  avg!: number;
+
+  @Field()
   hp!: number;
 
   @Field()

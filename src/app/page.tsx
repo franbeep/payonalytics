@@ -40,6 +40,7 @@ type ResponseVendingData = {
     iconURL: string;
     name: string;
     lp: number;
+    avg: number;
     hp: number;
     qty: number;
     minLocation: {
@@ -121,6 +122,7 @@ const vendingQuery = gql`
       iconURL
       name
       lp
+      avg
       hp
       qty
       minLocation {
@@ -275,7 +277,7 @@ const genVendingColumns = (
   },
   {
     title: 'Cards',
-    widthClass: 'w-1/4',
+    widthClass: 'w-1/5',
     field: 'cards',
   },
   {
@@ -284,6 +286,13 @@ const genVendingColumns = (
     field: `hp`,
     tooltip: 'Highest Price on sale',
     render: item => formatMoney(item.hp),
+  },
+  {
+    title: 'AVGP',
+    widthClass: 'w-36',
+    field: `avg`,
+    tooltip: 'Average Price on sale',
+    render: item => formatMoney(item.avg),
   },
   {
     title: 'LP',

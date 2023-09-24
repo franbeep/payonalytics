@@ -127,6 +127,14 @@ export class ItemVendingQueryResolver {
   }
 
   @FieldResolver()
+  avg(@Root() { vendingData }: ItemVending) {
+    return Math.round(
+      sum(vendingData.map(({ price, amount }) => price * amount)) /
+        sum(vendingData.map(({ amount }) => amount)),
+    );
+  }
+
+  @FieldResolver()
   hp(@Root() { vendingData }: ItemVending) {
     return max(vendingData.map(({ price }) => price)) || 0;
   }
